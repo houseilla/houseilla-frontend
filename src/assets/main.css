@@ -1,0 +1,347 @@
+/* ==========================================================================
+   1. Design Tokens & Universal Theme Matrices
+   ========================================================================== */
+:root {
+  --bg-color: #f0f2f5;
+  --text-color: #2c3e50;
+  --accent-color: #0077b6;
+  --shadow-light: #ffffff;
+  --shadow-dark: #b8c4d2;
+
+  /* Shared Neomorphic Tokens */
+  --neomorphic-flat: 6px 6px 12px var(--shadow-dark), 
+    -6px -6px 12px var(--shadow-light);
+  --neomorphic-inset: inset 4px 4px 8px var(--shadow-dark), 
+    inset -4px -4px 8px var(--shadow-light);
+  --transition-smooth: background-color 0.3s ease, 
+    color 0.3s ease, box-shadow 0.3s ease, 
+      transform 0.2s cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+[data-theme="dark"] {
+  --bg-color: #1a222d;
+  --text-color: #ecf0f1;
+  --accent-color: #00b4d8;
+  --shadow-light: #243242;
+  --shadow-dark: #10151c;
+}
+
+/* ==========================================================================
+   2. Global Clean Reset Layer
+   ========================================================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: var(--transition-smooth);
+}
+
+/* ==========================================================================
+   3. Shared Neomorphic Infrastructure (Layout Blocks)
+   ========================================================================== */
+.neomorphic-card-base {
+  background-color: var(--bg-color);
+  box-shadow: var(--neomorphic-flat);
+  transition: var(--transition-smooth);
+}
+
+.neomorphic-input-base {
+  background-color: var(--bg-color);
+  box-shadow: var(--neomorphic-inset);
+  transition: var(--transition-smooth);
+}
+
+.shadow-clipping-safe-zone {
+  padding-bottom: 32px;
+}
+
+/* ==========================================================================
+   4. Unified Flat Forms Engine System (Textboxes & Dropdowns)
+   ========================================================================== */
+.flat-form-field {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  border-radius: 12px;
+  background-color: var(--bg-color);
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  transition: var(--transition-smooth);
+}
+
+[data-theme="dark"] .flat-form-field {
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.flat-form-field:focus-within {
+  border-color: var(--accent-color);
+}
+
+.flat-field-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-color);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.flat-raw-input, .flat-raw-select {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  padding-left: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.flat-raw-input::placeholder {
+  color: var(--text-color);
+  opacity: 0.35;
+}
+
+/* ==========================================================================
+   5. Flat Binary Selection Components (Radio Buttons & Checkboxes)
+   ========================================================================== */
+.borderless-flat-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.flat-radio-label-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition-smooth);
+  opacity: 0.85;
+}
+
+.flat-radio-label-node:hover { opacity: 1; }
+.hidden-radio-input { display: none; }
+
+/* 5.1 Custom Radio Circle Graphic Vector */
+.custom-radio-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  display: inline-block;
+  position: relative;
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .custom-radio-dot { border: 1.5px solid rgba(255, 255, 255, 0.35); }
+
+.flat-radio-label-node.is-active-node .custom-radio-dot {
+  border-color: var(--accent-color);
+}
+
+.flat-radio-label-node.is-active-node .custom-radio-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+}
+
+/* 5.2 REUSABLE COMPONENT: Clean Minimal Flat Checkbox Vector Square */
+.custom-checkbox-square {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px; /* Sleek square radius contrast */
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  display: inline-block;
+  position: relative;
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .custom-checkbox-square { border: 1.5px solid rgba(255, 255, 255, 0.35); }
+
+.flat-radio-label-node.is-active-node .custom-checkbox-square {
+  border-color: var(--accent-color);
+  background-color: var(--accent-color);
+}
+
+/* Custom minimal CSS vector white check indicator mark */
+.flat-radio-label-node.is-active-node .custom-checkbox-square::after {
+  content: '';
+  position: absolute;
+  left: 3.5px;
+  top: 0.5px;
+  width: 4px;
+  height: 7px;
+  border: solid #ffffff;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.label-caption-string {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+/* ==========================================================================
+   6. Solid Primary Full-Width Theme Action Buttons
+   ========================================================================== */
+.flat-btn-row-wrapper {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.flat-full-width-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  border: none;
+  background-color: var(--text-color);
+  color: var(--bg-color);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.flat-full-width-action-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-0.5px);
+}
+
+.flat-full-width-action-btn:active {
+  transform: translateY(0);
+  opacity: 0.85;
+}
+
+.btn-label-text {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+}
+
+.flat-btn-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--bg-color);
+}
+
+/* ==========================================================================
+   7. Alert Validation & Disabled Rule Hooks
+   ========================================================================== */
+.flat-validation-alert { 
+  border-color: #e74c3c !important; 
+}
+.radio-validation-alert { 
+  border: 1.5px solid #e74c3c; 
+  border-radius: 8px; padding: 4px 12px; 
+}
+.row-disabled-state { 
+  opacity: 0.35; pointer-events: none; 
+  filter: grayscale(0.2); 
+}
+
+/* ==========================================================================
+   Universal Page Layout System (Shared Across All 5 Main Area Views)
+   ========================================================================== */
+.universal-view-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.universal-view-main-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-color);
+  margin-bottom: 0;
+  letter-spacing: -0.2px;
+}
+
+.universal-back-arrow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+}
+
+.universal-back-arrow-btn:hover {
+  opacity: 0.9;
+  transform: translateX(-2px); /* Seamless interactive micro-slide hint */
+}
+
+.universal-back-arrow-btn:active {
+  transform: translateX(0);
+}
+
+.universal-full-page-main-area-view {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.unstyled-data-readout-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.raw-data-debug-row {
+  font-size: 13.5px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  background-color: rgba(0, 0, 0, 0.01);
+  color: var(--text-color);
+  width: 100%;
+}
+
+[data-theme="dark"] .raw-data-debug-row {
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.empty-state-debug-hint {
+  font-size: 14px;
+  opacity: 0.5;
+  padding: 16px 0;
+  color: var(--text-color);
+}
+
+/*
+* {
+  outline: 1px solid red !important;
+}
+  */
