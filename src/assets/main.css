@@ -147,13 +147,17 @@ body {
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .custom-radio-dot { border: 1.5px solid rgba(255, 255, 255, 0.35); }
+[data-theme="dark"] .custom-radio-dot { 
+  border: 1.5px solid rgba(255, 255, 255, 0.35); 
+}
 
-.flat-radio-label-node.is-active-node .custom-radio-dot {
+.flat-radio-label-node.is-active-node 
+.custom-radio-dot {
   border-color: var(--accent-color);
 }
 
-.flat-radio-label-node.is-active-node .custom-radio-dot::after {
+.flat-radio-label-node.is-active-node 
+.custom-radio-dot::after {
   content: '';
   position: absolute;
   top: 50%; left: 50%;
@@ -176,15 +180,19 @@ body {
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .custom-checkbox-square { border: 1.5px solid rgba(255, 255, 255, 0.35); }
+[data-theme="dark"] .custom-checkbox-square { 
+  border: 1.5px solid rgba(255, 255, 255, 0.35); 
+}
 
-.flat-radio-label-node.is-active-node .custom-checkbox-square {
+.flat-radio-label-node.is-active-node 
+.custom-checkbox-square {
   border-color: var(--accent-color);
   background-color: var(--accent-color);
 }
 
 /* Custom minimal CSS vector white check indicator mark */
-.flat-radio-label-node.is-active-node .custom-checkbox-square::after {
+.flat-radio-label-node.is-active-node 
+.custom-checkbox-square::after {
   content: '';
   position: absolute;
   left: 3.5px;
@@ -339,6 +347,132 @@ body {
   padding: 16px 0;
   color: var(--text-color);
 }
+
+/* ==========================================================================
+   SHARED CORE VERTICAL WORKSPACE LAYOUT ENGINE (REUSABLE)
+   ========================================================================== */
+
+.vertical-stack-form {
+  display: flex !important;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.shadow-clipping-safe-zone {
+  padding-bottom: 32px;
+}
+
+.filter-vertical-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  transition: var(--transition-smooth, all 0.3s ease);
+}
+
+.divider-line-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.horizontal-hairline-divider {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* GLOBAL DARK MODE SUPPORT FOR DIVIDERS */
+[data-theme="dark"] .horizontal-hairline-divider {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* SHARED ANIMATION PRIMITIVES */
+.animate-fade-in {
+  animation: globalSubcardFadeIn 0.3s ease-out forwards;
+}
+
+@keyframes globalSubcardFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* ==========================================================================
+   SHARED FORM INTERACTIVE CHIPS & SELECTION MECHANICS
+   ========================================================================== */
+
+.remove-bottom-gap {
+  margin-bottom: -4px;
+}
+
+.category-selection-required-prompt {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #78889b;
+  letter-spacing: 0.1px;
+  padding: 4px 0;
+}
+
+[data-theme="dark"] .category-selection-required-prompt {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.mobile-wrapping-radio-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 24px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .mobile-wrapping-radio-row {
+    flex-wrap: wrap;
+    gap: 12px 20px;
+  }
+}
+
+/* INPUT COMPONENT VALIDATION SHAKE ENGINE */
+.shake-error-cue {
+  animation: structuralShake 0.45s ease-in-out;
+}
+
+@keyframes structuralShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+/* ==========================================================================
+   GLOBAL FORM VALIDATION HIGHLIGHTERS (REUSABLE)
+   ========================================================================== */
+
+/* 1. TEXT FIELDS: Soft inset highlight for standard inputs (SellProperty field) */
+div.flat-form-field.is-invalid-field {
+  border: 1.5px solid #ff3333 !important;
+  box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1), 
+              2px 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 2. CHIPS & BUTTONS: Wraps just the radio/checkbox node content instead of the whole row line */
+.borderless-flat-radio-row.is-invalid-field 
+.flat-radio-label-node {
+  border: 1.5px solid #ff3333 !important;
+  border-radius: 8px;
+  padding: 4px 12px;
+  transition: border-color 0.2s ease;
+}
+
+/* Red Text Descriptive Error Nodes Matching Buy & Sell Alignment */
+.flat-error-descriptor-text {
+  color: #ff3333;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 4px 0;
+  letter-spacing: 0.1px;
+}
+
 
 /*
 * {

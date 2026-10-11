@@ -37,3 +37,7 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+houseilla-backend/
+houseilla-frontend/
+houseilla-frontend-V2/
+houseilla-frontend-V3/
