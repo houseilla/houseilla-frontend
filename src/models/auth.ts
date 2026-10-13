@@ -1,27 +1,22 @@
+// src/models/auth.ts
 import type { Advertiser } from './advertisement';
 
 /**
- * Payload sent to backend to trigger the free email OTP delivery pipeline.
+ * Unified request payload used strictly for authentication phases
  */
-export interface SendOtpRequest {
-  email: string;
+export interface OtpRequest {
   phone: string;
+  email: string;
+  otpCode: string; // Sent as empty string initially, populated during verification step
 }
 
 /**
- * Payload sent to backend to verify the code and resolve account status.
- */
-export interface VerifyOtpRequest {
-  email: string;
-  phone: string;
-  otpCode: string;
-}
-
-/**
- * Unified response payload sent back by the Spring Boot backend validation controller.
+ * Structural backend validation check reply
  */
 export interface AuthVerificationResponse {
+  success: boolean;
+  message: string;
   isPreExisting: boolean;
-  advertiser: Advertiser | null; // Populated only if isPreExisting is true
-  jwtToken?: string;              // Session credential used for submitting property objects later
+  advertiser: Advertiser | null; // Database profile row context if pre-existing
+  jwtToken?: string;
 }
