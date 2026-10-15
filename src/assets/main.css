@@ -473,9 +473,31 @@ div.flat-form-field.is-invalid-field {
   letter-spacing: 0.1px;
 }
 
+/* =====================================================================
+   8. SHARED PLATFORM NEOMORPHIC INFRASTRUCTURE: DOT INDICATORS
+   ===================================================================== */
+.universal-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: background-color var(--transition-smooth);
+}
 
+/* Global Shared Color Tokens matching your exact brand parameters */
+.dot-brand-blue   { background-color: #0076df; }
+.dot-brand-orange { background-color: #ff7b00; }
+.dot-brand-gold   { background-color: #ffd71a; }
+.dot-brand-green  { background-color: #2ecc71; }
+
+/* Inactive / Progress step muted utility states */
+.dot-brand-muted  { background-color: #cbd5e1 !important; }
+.text-brand-muted { color: #94a3b8 !important; }
+  
 /*
 * {
   outline: 1px solid red !important;
 }
   */
+  

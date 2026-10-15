@@ -19,7 +19,8 @@ import PropertyDetailsView from '../views/PropertyDetailsView.vue'
 import type { Advertisement } from '../models/advertisement'
 
 // Navigation Engine Router State Matrix (Added 'details' state option)
-const currentViewState = ref<'home' | 'about' | 'services' | 'contact' | 'blog' | 'buy' | 'sell' | 'premium' | 'verified' | 'listings' | 'details'>('home')
+const currentViewState = ref<'home' | 'about' | 'services' | 'contact'
+    | 'blog' | 'buy' | 'sell' | 'premium' | 'verified' | 'listings' | 'details'>('home')
 const buyViewRef = ref<InstanceType<typeof BuyPropertyView> | null>(null)
 
 // Shared Reactive Results Data Containers
@@ -114,7 +115,10 @@ const getPageTitle = () => {
 
                                     <div @click="handleBuyPropertyClick" class="neo-action-card-button">
                                         <span class="card-left-content">
+                                            <!--
                                             <span class="action-bullet-indicator bullet-blue"></span>
+                                            -->
+                                            <span class="universal-status-dot dot-brand-blue"></span>
                                             <span class="action-row-text-title">Buy Property</span>
                                         </span>
                                         <svg class="action-arrow-pointer-icon" viewBox="0 0 24 24" fill="none"
@@ -125,7 +129,10 @@ const getPageTitle = () => {
 
                                     <div @click="setViewState('sell')" class="neo-action-card-button">
                                         <span class="card-left-content">
+                                            <!--
                                             <span class="action-bullet-indicator bullet-orange"></span>
+                                            -->
+                                            <span class="universal-status-dot dot-brand-orange"></span>
                                             <span class="action-row-text-title">Sell Property</span>
                                         </span>
                                         <svg class="action-arrow-pointer-icon" viewBox="0 0 24 24" fill="none"
@@ -136,7 +143,10 @@ const getPageTitle = () => {
 
                                     <div @click="setViewState('premium')" class="neo-action-card-button">
                                         <span class="card-left-content">
+                                            <!--
                                             <span class="action-bullet-indicator bullet-gold"></span>
+                                            -->
+                                            <span class="universal-status-dot dot-brand-gold"></span>
                                             <span class="action-row-text-title">Premium Property Portfolio</span>
                                         </span>
                                         <svg class="action-arrow-pointer-icon" viewBox="0 0 24 24" fill="none"
@@ -147,7 +157,10 @@ const getPageTitle = () => {
 
                                     <div @click="setViewState('verified')" class="neo-action-card-button">
                                         <span class="card-left-content">
+                                            <!--
                                             <span class="action-bullet-indicator bullet-green"></span>
+                                            -->
+                                            <span class="universal-status-dot dot-brand-green"></span>
                                             <span class="action-row-text-title">Verified Property Hub</span>
                                         </span>
                                         <svg class="action-arrow-pointer-icon" viewBox="0 0 24 24" fill="none"
@@ -408,6 +421,7 @@ const getPageTitle = () => {
     gap: 16px;
 }
 
+/*
 .action-bullet-indicator {
     width: 10px;
     height: 10px;
@@ -429,6 +443,7 @@ const getPageTitle = () => {
 .bullet-green {
     background-color: #2ecc71;
 }
+*/
 
 .action-row-text-title {
     font-size: 15px;

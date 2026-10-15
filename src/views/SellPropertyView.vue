@@ -119,11 +119,80 @@ const confirmOtpVerification = async () => {
         console.error('Fetch error:', error);
     }
 };
+
+// Active step metrics pointer state trackers
+const currentStep = ref(1);
+const maxVisitedStep = ref(1); // Graduation index constraint block
+
+const getStepLabel = (stepIndex: number): string => {
+    const stepsMap: Record<number, string> = {
+        1: 'Advertiser Identification',
+        2: 'Advertiser Profile',
+        3: 'Add/Update Advertisements',
+        4: 'Property Location',
+        5: 'Property Type & Purpose',
+        6: 'Property Details',
+        7: 'Photos & Media'
+    };
+    return stepsMap[stepIndex] || 'Unknown Step';
+};
+
+const navigateToStep = (targetStep: number) => {
+    if (targetStep <= maxVisitedStep.value) {
+        currentStep.value = targetStep;
+        validationError.value = false;
+    } else {
+        // Safety Fallback: revert layout select index choice if user tries to skip forward illegally
+        currentStep.value = maxVisitedStep.value;
+    }
+};
+
 </script>
 
-
-
 <template>
+    <div class="horizontal-steps-nav">
+
+        <!-- TRANSPARENT SELECT ENGINE ZONE -->
+        <div class="step-select-wrapper">
+            <select class="custom-transparent-step-select" v-model="currentStep"
+                @change="navigateToStep(Number(currentStep))">
+                <option v-for="stepNum in 7" :key="stepNum" :value="stepNum" :disabled="stepNum > maxVisitedStep"
+                    :class="{
+                        'opt-step-active': currentStep === stepNum,
+                        'opt-step-accessible': stepNum <= maxVisitedStep && currentStep !== stepNum,
+                        'opt-step-locked': stepNum > maxVisitedStep
+                    }">
+                    <!-- Dynamic text switcher: when rendering the dropdown list options, show names. When closed, shows only step index -->
+                    {{ currentStep === stepNum ? `Step ${stepNum} of 7` : `Step ${stepNum} of 7:
+                    ${getStepLabel(stepNum)}` }}
+                </option>
+            </select>
+
+            <!-- Native Inline Blue SVG Dropdown Arrow Icon -->
+            <svg class="custom-native-dropdown-arrow-svg" viewBox="0 0 24 24" fill="none">
+                <path d="M6 9l6 6 6-6" stroke="#0076df" stroke-width="3" stroke-linecap="round"
+                    stroke-linejoin='round' />
+            </svg>
+        </div>
+
+        <span class="step-separator-vertical-pipe">|</span>
+
+        <!-- CURRENT ACTIVE STEP DISPLAY (FLAT TEXT VIEW) -->
+        <div class="step-nav-textitem active-view-status">
+            <span class="universal-status-dot dot-brand-blue"></span>
+            <span class="step-label-text-string">{{ getStepLabel(currentStep) }}</span>
+        </div>
+
+        <span class="step-separator-arrow">➔</span>
+
+        <!-- UPCOMING PREVIEW DISPLAYER (FLAT TEXT VIEW) -->
+        <div class="step-nav-textitem upcoming-preview-status">
+            <span class="universal-status-dot dot-brand-orange" :class="{ 'dot-brand-muted': currentStep < 2 }"></span>
+            <span class="step-label-text-string text-muted">
+                Next: {{ currentStep < 7 ? getStepLabel(currentStep + 1) : 'Review & Submit' }} </span>
+        </div>
+    </div>
+
     <div class="vertical-stack-form shadow-clipping-safe-zone">
 
         <!-- Phone Number Field Section -->
@@ -207,5 +276,212 @@ const confirmOtpVerification = async () => {
 /* Scoped configurations matching BuyPropertyView configuration hooks */
 .otp-verification-wrapper {
     width: 100%;
+}
+
+/* Container for horizontal compact progress bar placement */
+.horizontal-steps-nav {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 12px;
+    margin-bottom: 24px;
+    background-color: transparent;
+}
+
+/* Symmetrical dynamic layout counters */
+.step-progress-counter-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.active-count-num {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0076df;
+    /* Brand Accent Blue */
+}
+
+.total-count-num {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.step-separator-vertical-pipe {
+    color: #cbd5e1;
+    opacity: 0.7;
+    user-select: none;
+}
+
+/* Base item wrapper controls */
+.step-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.step-active {
+    font-weight: 500;
+}
+
+.step-upcoming-preview {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.step-label-text {
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.step-separator-arrow {
+    color: #cbd5e1;
+    font-size: 11px;
+    user-select: none;
+}
+
+/* Geometric dot nodes */
+/*
+.dot-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.blue-dot {
+    background-color: #0076df;
+}
+
+.orange-dot {
+    background-color: #ff7b00;
+}
+
+.dot-muted {
+    background-color: #cbd5e1 !important;
+}
+*/
+.text-muted {
+    color: #64748b !important;
+}
+
+/* Central horizontal steps bar alignment container */
+.horizontal-steps-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    margin-bottom: 24px;
+}
+
+/* Base Dropdown Container Sizing Wrapper */
+.step-select-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 102px;
+    /* Proportional boundary width tailored for 'Step X of 7' layout text */
+}
+
+/* TRANSPARENT SELECT CUSTOMIZATION FIELDS */
+.custom-transparent-step-select {
+    width: 100%;
+    height: 32px;
+    background-color: transparent !important;
+    border: none !important;
+    /* Removes outer border box wrapper completely */
+    outline: none !important;
+    box-shadow: none !important;
+
+    padding: 4px 18px 4px 0px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #0076df;
+    /* High-contrast active step blue text */
+    cursor: pointer;
+    appearance: none;
+    /* Strips browser default checkmarks and selection panels */
+}
+
+/* Remove default focus boundaries across mobile/desktop browsers */
+.custom-transparent-step-select:focus,
+.custom-transparent-step-select:active {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* ALIGN DROPDOWN ARROW PERFECTLY */
+.custom-native-dropdown-arrow-svg {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 11px;
+    height: 11px;
+    pointer-events: none;
+    /* Crucial: clicks pass straight through onto the dropdown menu */
+}
+
+/* =====================================================================
+   DROPDOWN OPTIONS LIST ROW STATE COLOR RULES
+   ===================================================================== */
+.custom-transparent-step-select option {
+    background-color: #ffffff !important;
+    /* Strips default blue highlighting color box fill */
+    font-weight: 500;
+    padding: 8px;
+}
+
+/* 1. Active Step Option Color: Blue */
+.opt-step-active {
+    color: #0076df !important;
+    font-weight: 600 !important;
+}
+
+/* 2. Lower Order Unlocked Steps Option Color: Active Black */
+.opt-step-accessible {
+    color: #1e293b !important;
+}
+
+/* 3. Higher Order Locked Steps Option Color: Disabled Gray */
+.opt-step-locked,
+.custom-transparent-step-select option:disabled {
+    color: #94a3b8 !important;
+    background-color: #f8fafc !important;
+    cursor: not-allowed;
+}
+
+/* Standard structural alignment parameters utilities */
+.step-separator-vertical-pipe {
+    color: #cbd5e1;
+    font-size: 14px;
+    user-select: none;
+    margin: 0 4px;
+}
+
+.step-nav-textitem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.step-label-text-string {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.step-separator-arrow {
+    color: #cbd5e1;
+    font-size: 10px;
+    user-select: none;
+    margin: 0 4px;
 }
 </style>
