@@ -383,7 +383,7 @@ const navigateToStep = (targetStep: number) => {
     position: relative;
     display: inline-flex;
     align-items: center;
-    width: 102px;
+    width: 90px;
     /* Proportional boundary width tailored for 'Step X of 7' layout text */
 }
 
