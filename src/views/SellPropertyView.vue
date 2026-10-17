@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { authService } from '../services/authService';
 import type { OtpRequest } from '../models/auth';
 import type { Advertiser } from '../models/advertisement';
+// Pulls your existing enum labels map straight from your project's configuration file
+import { AdvertiserType, AdvertiserTypeLabels, getAdvertiserTypeLabel } from '../models/enums';
+
 
 // =====================================================================
-// A. CORE STATE UTILITIES & CACHE FORMS
+// A. CORE STATE WIZARD LAYOUT SWITCH ENUMS
 // =====================================================================
-const currentStep = ref(1);
-const maxVisitedStep = ref(1);
+enum WizardStep {
+    IDENTIFICATION = 1,
+    PROFILE = 2,
+    ADD_ADVERTISEMENT = 3,
+    PROPERTY_LOCATION = 4,
+    PROPERTY_TYPE_PURPOSE = 5,
+    PROPERTY_DETAILS = 6,
+    PHOTOS_MEDIA = 7
+}
+
+const currentStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
+const maxVisitedStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
 
 const isOtpSent = ref(false);
-const isOtpVerified = ref(false); // Manages uneditable and hidden views globally
+const isOtpVerified = ref(false);
 const isOtpSuccess = ref(false);
 const validationError = ref(false);
 const errorMessage = ref('');
@@ -24,7 +37,7 @@ const authForm = ref<OtpRequest>({
 
 const authenticatedAdvertiser = ref<Advertiser | null>(null);
 
-// Static text layout dictionary mapper
+// Dynamic mapping dictionary for step tracking text strings
 const getStepLabel = (stepIndex: number): string => {
     const stepsMap: Record<number, string> = {
         1: 'Advertiser Identification',
@@ -39,14 +52,17 @@ const getStepLabel = (stepIndex: number): string => {
 };
 
 // =====================================================================
-// B. REGEX INFRASTRUCTURE FIELD VALIDATIONS
+// B. REGEX UTILITY VALIDATORS
 // =====================================================================
 const isPhoneValid = () => /^\d{10}$/.test(authForm.value.phone.trim());
 const isEmailValid = () => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(authForm.value.email.trim());
 const isOtpValid = () => /^\d{6}$/.test(authForm.value.otpCode.trim());
 
+const isNameValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.advertiserName.trim().length > 0;
+const isTypeValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.advertiserType > 0;
+
 // =====================================================================
-// C. BACKEND ROUTE HANDLING LOGIC LIFECYCLES
+// C. API TRANSACTION DISPATCH METRICS
 // =====================================================================
 const verifyAdvertiser = async () => {
     validationError.value = false;
@@ -69,14 +85,13 @@ const verifyAdvertiser = async () => {
     } catch (error) {
         validationError.value = true;
         errorMessage.value = 'Cannot connect to backend authentication server.';
-        console.error('Fetch error:', error);
     }
 };
 
 const confirmOtpVerification = async () => {
     validationError.value = false;
     errorMessage.value = '';
-    isOtpSuccess.value = false; // Reset success flags before a new request
+    isOtpSuccess.value = false;
 
     if (!isOtpValid()) {
         validationError.value = true;
@@ -89,13 +104,17 @@ const confirmOtpVerification = async () => {
 
         if (data.success) {
             console.log('OTP Verification Passed Successfully!');
-
             isOtpVerified.value = true;
-            isOtpSuccess.value = true; // <-- ACTIVATES GREEN SUCCESS BANNER IN THE LAYOUT TEMPLATE
+            isOtpSuccess.value = true;
 
+            // FIXED CONDITION MATCH: Read data directly from your backend key response map
             if (data.isPreExisting && data.advertiser) {
                 authenticatedAdvertiser.value = data.advertiser;
+                console.log('Pre-existing advertiser row verified. Promoting straight to update profile view.');
+                maxVisitedStep.value = WizardStep.PROFILE;
+                currentStep.value = WizardStep.PROFILE;
             } else {
+                // Build new blank template entity data object layout values
                 authenticatedAdvertiser.value = {
                     advertiserId: 0,
                     advertiserName: '',
@@ -104,6 +123,9 @@ const confirmOtpVerification = async () => {
                     advertiserPhone: authForm.value.phone.trim(),
                     advertiserEmail: authForm.value.email.trim()
                 };
+                console.log('Fresh Advertiser Profile Successfully Initialized:', authenticatedAdvertiser.value);
+                maxVisitedStep.value = WizardStep.PROFILE;
+                currentStep.value = WizardStep.PROFILE;
             }
         } else {
             validationError.value = true;
@@ -115,9 +137,22 @@ const confirmOtpVerification = async () => {
     }
 };
 
+const saveAdvertiserProfile = () => {
+    validationError.value = false;
+    errorMessage.value = '';
+
+    if (!isNameValid() || !isTypeValid()) {
+        validationError.value = true;
+        errorMessage.value = 'Please enter your name and select your advertiser profile type.';
+        return;
+    }
+    console.log('Profile details verified successfully. Moving forward:', authenticatedAdvertiser.value);
+    // maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
+    // currentStep.value = WizardStep.ADD_ADVERTISEMENT;
+};
 
 // =====================================================================
-// D. CLICK-OUTSIDE POPOVER WIDGET HANDLERS
+// D. CLICK-OUTSIDE DISPATCH POPOVER MAP INTERACTIVE ROUTERS
 // =====================================================================
 const isMapExpanded = ref(false);
 const dropdownElementRef = ref<HTMLElement | null>(null);
@@ -129,7 +164,8 @@ const handleWindowOutsideClick = (event: MouseEvent) => {
     }
 };
 
-const selectCustomStep = (targetStep: number) => {
+const selectCustomStep = (targetStepNumber: number) => {
+    const targetStep = targetStepNumber as WizardStep;
     if (targetStep <= maxVisitedStep.value) {
         currentStep.value = targetStep;
         isMapExpanded.value = false;
@@ -140,24 +176,20 @@ const selectCustomStep = (targetStep: number) => {
 onMounted(() => window.addEventListener('click', handleWindowOutsideClick));
 onUnmounted(() => window.removeEventListener('click', handleWindowOutsideClick));
 
-
-// Handles processing profile details updates for fresh accounts during Stage 2
-const saveAdvertiserProfile = () => {
-    validationError.value = false;
-    errorMessage.value = '';
-
-    // Simple console diagnostic to prove step 2 hook executes cleanly
-    console.log('Profile details submitted successfully for:', authenticatedAdvertiser.value);
-
-    // Your next listing layout wizard navigation updates go right here:
-    // maxVisitedStep.value = 3;
-    // currentStep.value = 3;
-};
-
+const advertiserTypeOptions = computed(() => {
+    // Directly loops through your strict numeric keys (0, 1, 2) to maintain perfect type protection
+    return [AdvertiserType.BROKER, AdvertiserType.BUILDER, AdvertiserType.INDIVIDUAL].map((enumValue) => ({
+        value: enumValue,
+        label: getAdvertiserTypeLabel(enumValue) // Natively pulls: 'Broker / Agent', etc.
+    }));
+});
 </script>
 
-
 <template>
+
+    <!--
+    COMMON SECTION Starts
+    -->
     <div class="horizontal-steps-nav">
 
         <!-- CUSTOM INLINE POPOVER TRIGGER ENGINE -->
@@ -205,10 +237,14 @@ const saveAdvertiserProfile = () => {
 
     </div>
 
-    /************************************/
-    /* STEP 1 STARTS */
-    /************************************/
-    <div class="vertical-stack-form shadow-clipping-safe-zone">
+    <!--
+    COMMON SECTION ENDS
+    -->
+
+
+    <!--STEP 1 IDENTIFICATION STARTS-->
+
+    <div v-if="currentStep === WizardStep.IDENTIFICATION" class="vertical-stack-form shadow-clipping-safe-zone">
 
         <!-- Phone Number Input Field Wrapper -->
         <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isPhoneValid() }">
@@ -294,9 +330,101 @@ const saveAdvertiserProfile = () => {
         </div>
 
     </div>
-    /************************************/
-    /* STEP 1 ENDS */
-    /************************************/
+    <!--STEP 1 IDENTIFICATION Ends-->
+
+
+    <!-- ========================================== -->
+    <!-- STEP 2: ADVERTISER PROFILE VIEWS           -->
+    <!-- ========================================== -->
+    <div v-if="currentStep === WizardStep.PROFILE" class="vertical-stack-form shadow-clipping-safe-zone">
+        <!--
+        <div class="universal-view-header-row" style="margin-bottom: 12px;">
+            <h3 style="font-size: 15px; font-weight: 600; color: #1e293b; margin: 0;">
+                {{ authenticatedAdvertiser?.advertiserId ? 'Update Profile Details' : 'Advertiser Profile Details' }}
+            </h3>
+        </div>
+        -->
+
+        <!-- 1. LOCKED VERIFIED PHONE NUMBER FIELD ON TOP -->
+        <div class="flat-form-field">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path
+                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            <input type="tel" class="flat-raw-input" v-model="authenticatedAdvertiser!.advertiserPhone" disabled />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 2. LOCKED VERIFIED EMAIL ADDRESS FIELD -->
+        <div class="flat-form-field">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+            </svg>
+            <input type="email" class="flat-raw-input" v-model="authenticatedAdvertiser!.advertiserEmail" disabled />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 3. EDITABLE FULL NAME INPUT FIELD -->
+        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isNameValid() }">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+            </svg>
+            <input type="text" class="flat-raw-input" placeholder="Enter Full Name..."
+                v-model="authenticatedAdvertiser!.advertiserName" />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 4. EDITABLE ADVERTISER TYPE RADIO SELECTION BLOCK -->
+        <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid() }">
+            <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
+                :class="{ 'is-active-node': option.value === authenticatedAdvertiser!.advertiserType }">
+                <input type="radio" name="advertiserTypeGroup" :value="option.value"
+                    v-model="authenticatedAdvertiser!.advertiserType"
+                    style="position: absolute; opacity: 0; width: 0; height: 0;" />
+                <span class="custom-radio-dot"></span>
+                <span class="label-caption-string">{{ option.label }}</span>
+            </label>
+        </div>
+
+        <!-- Local Validation Error Display block -->
+        <div v-if="validationError" class="filter-vertical-row" style="margin-top: 12px; margin-bottom: -4px;">
+            <span class="flat-error-descriptor-text">
+                {{ errorMessage }}
+            </span>
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 5. SAVE PROFILE FOOTER ACTION BUTTON -->
+        <div class="flat-btn-row-wrapper">
+            <button @click="saveAdvertiserProfile" class="flat-full-width-action-btn" type="button">
+                <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                </svg>
+                <span class="btn-text-label">
+                    {{ authenticatedAdvertiser?.advertiserId ?
+                        'Update Profile Details' : 'SaveProfile Details' }}
+                </span>
+            </button>
+        </div>
+
+    </div>
+    <!-- STEP 2 PROFILE ENDS -->
+
 </template>
 
 <style scoped>

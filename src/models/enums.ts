@@ -17,10 +17,14 @@ export enum AdvertiserType {
 }
 
 export const AdvertiserTypeLabels: Record<AdvertiserType, string> = {
-  [AdvertiserType.BROKER]: 'Broker',
-  [AdvertiserType.BUILDER]: 'Builder',
-  [AdvertiserType.INDIVIDUAL]: 'Individual'
+  [AdvertiserType.BROKER]: 'Broker / Agent',
+  [AdvertiserType.BUILDER]: 'Builder / Promoter',
+  [AdvertiserType.INDIVIDUAL]: 'Individual / Owner'
 };
+
+export function getAdvertiserTypeLabel(value: number): string {
+    return AdvertiserTypeLabels[value as AdvertiserType] || 'UNKNOWN';
+}
 
 // 3. Advertisement Property Type (Master Discriminator)
 export enum AdvertisementPropertyType {
@@ -43,7 +47,6 @@ export const AdvertisementPropertyTypeLabels: Record<AdvertisementPropertyType, 
   [AdvertisementPropertyType.WAREHOUSE]: 'Warehouse'
 };
 
-// Mirrors the backend's static getkeyFromValue(int value) method
 export function getPropertyTypeLabel(value: number): string {
   return AdvertisementPropertyTypeLabels[value as AdvertisementPropertyType] || 'UNKNOWN';
 }
