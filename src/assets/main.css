@@ -490,11 +490,20 @@ div.flat-form-field.is-invalid-field {
 .dot-brand-orange { background-color: #ff7b00; }
 .dot-brand-gold   { background-color: #ffd71a; }
 .dot-brand-green  { background-color: #2ecc71; }
+.dot-brand-purple { background-color: #9b59b6; }
+.dot-brand-teal   { background-color: #1abc9c; }
+.dot-brand-red    { background-color: #e74c3c; }
 
 /* Inactive / Progress step muted utility states */
 .dot-brand-muted  { background-color: #cbd5e1 !important; }
 .text-brand-muted { color: #94a3b8 !important; }
   
+/* Dynamic layout modifier delivering that flat, beautiful matte appearance for unvisited stages */
+.universal-status-dot.is-matt-disabled {
+  opacity: 0.28 !important;   /* Elegant dimming parameter drop */
+  filter: saturate(0.4) contrast(0.95); /* Transforms color structure into a flat matte look */
+}
+
 /*
 * {
   outline: 1px solid red !important;

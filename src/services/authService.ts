@@ -24,6 +24,18 @@ export const authService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return await response.json();
+    
+    const data: AuthVerificationResponse = await response.json();
+
+    // Securely cache the incoming token when the authentication check succeeds
+    if (data.success && data.jwtToken) {
+      console.log("%c[AuthService] OTP Success! Storing JWT Token:", "color: #16a34a; font-weight: bold;", data.jwtToken);
+      localStorage.setItem('houseilla_token', data.jwtToken);
+    } else {
+      console.warn("[AuthService] Verification response parsed, but 'jwtToken' was missing or success evaluated false.");
+    }
+
+    return data;
   }
+
 };

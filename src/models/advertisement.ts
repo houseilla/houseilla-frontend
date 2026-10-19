@@ -4,6 +4,21 @@ import {
   AdvertisementPurpose 
 } from './enums';
 
+
+export interface Advertiser {
+  advertiserId: number;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  location: string;
+  type: number;
+  contractual: number;
+}
+
+
+
+
 // Mirrors AdvertisementImage.java
 export interface AdvertisementImage {
   fileId: number;
@@ -12,16 +27,6 @@ export interface AdvertisementImage {
   type: string;
   byte11: string; // Stored as Base64 string from backend
   base64Data?: string; // Generated helper for <img> src tags: `data:${type};base64,${byte11}`
-}
-
-// Mirrors Advertiser.java
-export interface Advertiser {
-  advertiserId: number;
-  advertiserName: string;
-  isPremium: number;
-  advertiserType: number;
-  advertiserPhone: string;
-  advertiserEmail: string;
 }
 
 // Mirrors Advertisement.java (The Base Model Hub)

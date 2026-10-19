@@ -5,7 +5,24 @@ import type { OtpRequest } from '../models/auth';
 import type { Advertiser } from '../models/advertisement';
 // Pulls your existing enum labels map straight from your project's configuration file
 import { AdvertiserType, AdvertiserTypeLabels, getAdvertiserTypeLabel } from '../models/enums';
+import { advertiserService } from '../services/advertiserService';
 
+
+/**
+ * Natively binds each layout stage step to your exact preserved main.css class names
+ */
+const getStageColorClass = (stepIndex: number): string => {
+    const colorMap: Record<number, string> = {
+        1: 'dot-brand-blue',
+        2: 'dot-brand-orange',
+        3: 'dot-brand-gold',
+        4: 'dot-brand-green',
+        5: 'dot-brand-purple',
+        6: 'dot-brand-teal',
+        7: 'dot-brand-red'
+    };
+    return colorMap[stepIndex] || 'dot-brand-blue';
+};
 
 // =====================================================================
 // A. CORE STATE WIZARD LAYOUT SWITCH ENUMS
@@ -58,8 +75,8 @@ const isPhoneValid = () => /^\d{10}$/.test(authForm.value.phone.trim());
 const isEmailValid = () => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(authForm.value.email.trim());
 const isOtpValid = () => /^\d{6}$/.test(authForm.value.otpCode.trim());
 
-const isNameValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.advertiserName.trim().length > 0;
-const isTypeValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.advertiserType > 0;
+const isNameValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.name.trim().length > 0;
+const isTypeValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.type !== undefined;
 
 // =====================================================================
 // C. API TRANSACTION DISPATCH METRICS
@@ -111,22 +128,25 @@ const confirmOtpVerification = async () => {
             if (data.isPreExisting && data.advertiser) {
                 authenticatedAdvertiser.value = data.advertiser;
                 console.log('Pre-existing advertiser row verified. Promoting straight to update profile view.');
-                maxVisitedStep.value = WizardStep.PROFILE;
-                currentStep.value = WizardStep.PROFILE;
+
             } else {
                 // Build new blank template entity data object layout values
                 authenticatedAdvertiser.value = {
                     advertiserId: 0,
-                    advertiserName: '',
-                    isPremium: 0,
-                    advertiserType: 0,
-                    advertiserPhone: authForm.value.phone.trim(),
-                    advertiserEmail: authForm.value.email.trim()
+                    name: '',
+                    phone: authForm.value.phone.trim(),
+                    email: authForm.value.email.trim(),
+                    address: '',
+                    location: '',
+                    type: 0,
+                    contractual: 0
                 };
-                console.log('Fresh Advertiser Profile Successfully Initialized:', authenticatedAdvertiser.value);
-                maxVisitedStep.value = WizardStep.PROFILE;
-                currentStep.value = WizardStep.PROFILE;
+                console.log('Advertiser Profile Successfully Initialized:', authenticatedAdvertiser.value);
             }
+
+            maxVisitedStep.value = WizardStep.PROFILE;
+            currentStep.value = WizardStep.PROFILE;
+
         } else {
             validationError.value = true;
             errorMessage.value = data.message || 'The verification code entered is incorrect.';
@@ -137,18 +157,45 @@ const confirmOtpVerification = async () => {
     }
 };
 
-const saveAdvertiserProfile = () => {
+const saveAdvertiserProfile = async () => {
     validationError.value = false;
     errorMessage.value = '';
 
-    if (!isNameValid() || !isTypeValid()) {
+    // 1. Enforce validation parameter checks before initiating network traffic
+    if (!isNameValid()) {
         validationError.value = true;
-        errorMessage.value = 'Please enter your name and select your advertiser profile type.';
+        errorMessage.value = 'Please enter your full name to complete your profile.';
         return;
     }
-    console.log('Profile details verified successfully. Moving forward:', authenticatedAdvertiser.value);
-    // maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
-    // currentStep.value = WizardStep.ADD_ADVERTISEMENT;
+    if (!isTypeValid()) {
+        validationError.value = true;
+        errorMessage.value = 'Please select your advertiser account profile type.';
+        return;
+    }
+
+    try {
+        // 2. Dispatch data package safely through your secure header fetch client wrapper
+        const response = await advertiserService.saveAdvertiserProfile(authenticatedAdvertiser.value!);
+
+        if (response.success && response.advertiser) {
+            console.log('Profile processed and saved down to database successfully!', response.advertiser);
+
+            // Update local state snapshot with the official auto-generated Advertiser ID from the DB
+            authenticatedAdvertiser.value = response.advertiser;
+
+            // 3. AUTO-PROMOTION: Advance your type-safe Enum wizard step forward to Step 3 (Add Advertisement)
+            maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
+            currentStep.value = WizardStep.ADD_ADVERTISEMENT;
+
+        } else {
+            validationError.value = true;
+            errorMessage.value = response.message || 'Failed to submit profile updates. Please try again.';
+        }
+    } catch (error) {
+        validationError.value = true;
+        errorMessage.value = 'Failed communicating with backend security layers.';
+        console.error('API submission transaction faulted:', error);
+    }
 };
 
 // =====================================================================
@@ -194,8 +241,6 @@ const advertiserTypeOptions = computed(() => {
 
         <!-- CUSTOM INLINE POPOVER TRIGGER ENGINE -->
         <div class="step-custom-dropdown-container" ref="dropdownElementRef">
-
-            <!-- Clickable Text Button Label acting as the display node -->
             <div class="custom-step-trigger-btn" @click="isMapExpanded = !isMapExpanded">
                 <span class="active-count-num">Step {{ currentStep }} of 7</span>
                 <svg class="custom-native-dropdown-arrow-svg" :class="{ 'arrow-rotated': isMapExpanded }"
@@ -205,7 +250,7 @@ const advertiserTypeOptions = computed(() => {
                 </svg>
             </div>
 
-            <!-- CUSTOM POPUP MENU: Displays cleanly with 0% native tick marks or overrides -->
+            <!-- CUSTOM POPUP MENU -->
             <div v-if="isMapExpanded" class="custom-dropdown-popover-box" @click.stop>
                 <div v-for="stepNum in 7" :key="stepNum" class="custom-popover-option-row" :class="{
                     'opt-custom-active': currentStep === stepNum,
@@ -220,19 +265,24 @@ const advertiserTypeOptions = computed(() => {
 
         <span class="step-separator-vertical-pipe">|</span>
 
-        <!-- CURRENT ACTIVE STEP DISPLAY (FLAT TEXT VIEW) -->
-        <div class="step-nav-textitem active-view-status">
-            <span class="universal-status-dot dot-brand-blue"></span>
-            <span class="step-label-text-string">{{ getStepLabel(currentStep) }}</span>
-        </div>
+        <!-- DYNAMIC 7-COLOR GEOMETRIC HORIZONTAL PROGRESS TIMELINE -->
+        <div class="geometric-timeline-row-container">
+            <div v-for="stepNum in 7" :key="stepNum" class="timeline-step-node-item" :class="{
+                'is-active-stage': currentStep === stepNum,
+                'is-accessible-stage': stepNum <= maxVisitedStep && currentStep !== stepNum,
+                'is-locked-stage': stepNum > maxVisitedStep
+            }" @click="selectCustomStep(stepNum)" :title="getStepLabel(stepNum)">
+                <!-- COLORFUL DOT SELECTION LOOP MATCHING PRESERVED CLASS NAMES -->
+                <span class="universal-status-dot" :class="[
+                    getStageColorClass(stepNum),
+                    { 'is-matt-disabled': stepNum > maxVisitedStep }
+                ]"></span>
 
-        <span class="step-separator-arrow">➔</span>
-
-        <!-- UPCOMING PREVIEW DISPLAYER (FLAT TEXT VIEW) -->
-        <div class="step-nav-textitem upcoming-preview-status">
-            <span class="universal-status-dot dot-brand-orange" :class="{ 'dot-brand-muted': currentStep < 2 }"></span>
-            <span class="step-label-text-string text-muted">
-                Next: {{ currentStep < 7 ? getStepLabel(currentStep + 1) : 'Review & Submit' }} </span>
+                <!-- INLINE ACTIVE TEXT BLOCK: Only visible for the current active step -->
+                <span v-if="currentStep === stepNum" class="timeline-active-label-text">
+                    {{ getStepLabel(stepNum) }}
+                </span>
+            </div>
         </div>
 
     </div>
@@ -351,7 +401,7 @@ const advertiserTypeOptions = computed(() => {
                 <path
                     d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
             </svg>
-            <input type="tel" class="flat-raw-input" v-model="authenticatedAdvertiser!.advertiserPhone" disabled />
+            <input type="tel" class="flat-raw-input" v-model="authenticatedAdvertiser!.phone" disabled />
         </div>
 
         <div class="divider-line-container">
@@ -364,7 +414,7 @@ const advertiserTypeOptions = computed(() => {
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                 <polyline points="22,6 12,13 2,6" />
             </svg>
-            <input type="email" class="flat-raw-input" v-model="authenticatedAdvertiser!.advertiserEmail" disabled />
+            <input type="email" class="flat-raw-input" v-model="authenticatedAdvertiser!.email" disabled />
         </div>
 
         <div class="divider-line-container">
@@ -378,7 +428,7 @@ const advertiserTypeOptions = computed(() => {
                 <circle cx="12" cy="7" r="4" />
             </svg>
             <input type="text" class="flat-raw-input" placeholder="Enter Full Name..."
-                v-model="authenticatedAdvertiser!.advertiserName" />
+                v-model="authenticatedAdvertiser!.name" />
         </div>
 
         <div class="divider-line-container">
@@ -388,9 +438,9 @@ const advertiserTypeOptions = computed(() => {
         <!-- 4. EDITABLE ADVERTISER TYPE RADIO SELECTION BLOCK -->
         <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid() }">
             <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
-                :class="{ 'is-active-node': option.value === authenticatedAdvertiser!.advertiserType }">
+                :class="{ 'is-active-node': option.value === authenticatedAdvertiser!.type }">
                 <input type="radio" name="advertiserTypeGroup" :value="option.value"
-                    v-model="authenticatedAdvertiser!.advertiserType"
+                    v-model="authenticatedAdvertiser!.type"
                     style="position: absolute; opacity: 0; width: 0; height: 0;" />
                 <span class="custom-radio-dot"></span>
                 <span class="label-caption-string">{{ option.label }}</span>
@@ -428,11 +478,6 @@ const advertiserTypeOptions = computed(() => {
 </template>
 
 <style scoped>
-/* Scoped configurations matching BuyPropertyView configuration hooks */
-.otp-verification-wrapper {
-    width: 100%;
-}
-
 /* Container framework alignment rules */
 .horizontal-steps-nav {
     display: flex;
@@ -445,6 +490,7 @@ const advertiserTypeOptions = computed(() => {
 .step-custom-dropdown-container {
     position: relative;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 /* Custom layout trigger text label node */
@@ -455,6 +501,7 @@ const advertiserTypeOptions = computed(() => {
     height: 32px;
     cursor: pointer;
     user-select: none;
+    padding-right: 8px;
 }
 
 .active-count-num {
@@ -501,7 +548,6 @@ const advertiserTypeOptions = computed(() => {
 }
 
 /* CUSTOM HIGHLIGHTING STATE COLORS (0% TICK MARKS) */
-/* 1. Active Step State: Blue text, no blue panel fill background */
 .opt-custom-active {
     color: #0076df !important;
     font-weight: 600 !important;
@@ -509,7 +555,6 @@ const advertiserTypeOptions = computed(() => {
     cursor: default;
 }
 
-/* 2. Unlocked Lower Order Steps State: Active Black */
 .opt-custom-accessible {
     color: #1e293b !important;
     cursor: pointer;
@@ -519,86 +564,81 @@ const advertiserTypeOptions = computed(() => {
     background-color: #f1f5f9;
 }
 
-/* 3. Locked Higher Order Steps State: Disabled Gray */
 .opt-custom-locked {
     color: #94a3b8 !important;
     cursor: not-allowed;
     opacity: 0.6;
 }
 
-/* Flat UI Spacers & Elements Utilities */
 .step-separator-vertical-pipe {
     color: #cbd5e1;
     font-size: 14px;
     user-select: none;
     margin: 0 4px;
-}
-
-.step-nav-textitem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-}
-
-.step-label-text-string {
-    font-size: 13.5px;
-    font-weight: 500;
-    color: #1e293b;
-}
-
-.step-separator-arrow {
-    color: #cbd5e1;
-    font-size: 10px;
-    user-select: none;
-    margin: 0 4px;
-}
-
-/* Custom Flat Success Box Design Tokens */
-.flat-success-banner-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 12px 16px;
-    background-color: #f0fdf4;
-    /* Clean soft light green tint fill background */
-    border: 1px solid #bbf7d0;
-    /* Subtle light green tracking border outline */
-    border-radius: 8px;
-    box-sizing: border-box;
-}
-
-.success-check-icon {
-    width: 15px;
-    height: 15px;
-    color: #16a34a;
-    /* Flat Accent Forest Green Check Token */
     flex-shrink: 0;
 }
 
-.flat-success-descriptor-text {
+/* =====================================================================
+   GEOMETRIC TIMELINE FLEX GRID TRACKING LAYOUT
+   ===================================================================== */
+.geometric-timeline-row-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+
+.timeline-step-node-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.is-active-stage {
+    cursor: default;
+}
+
+.is-accessible-stage {
+    cursor: pointer;
+}
+
+.is-locked-unvisited-stage {
+    cursor: not-allowed;
+}
+
+/* DYNAMIC PROGRESS MODIFIERS: Handles custom dimming for unvisited states */
+.universal-status-dot.disabled-orange-modifier {
+    opacity: 0.35 !important;
+    /* Elegant neomorphic disabled layout appearance */
+    transition: opacity 0.2s ease;
+}
+
+.is-accessible-stage:hover .universal-status-dot {
+    transform: scale(1.15);
+    /* Soft visual feedback on hover */
+}
+
+/* Active Text string display properties */
+.timeline-active-label-text {
     font-size: 13.5px;
-    font-weight: 500;
-    color: #16a34a;
-    /* Matching text color theme metrics */
-    font-family: inherit;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    animation: slideExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Smooth micro-interaction arrival overlay animation */
-.animation-fade-in-smooth {
-    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes fadeIn {
+@keyframes slideExpand {
     from {
         opacity: 0;
-        transform: translateY(-4px);
+        transform: translateX(-6px);
+        max-width: 0;
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateX(0);
+        max-width: 300px;
     }
 }
 </style>

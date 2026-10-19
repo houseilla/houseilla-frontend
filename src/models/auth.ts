@@ -20,3 +20,4 @@ export interface AuthVerificationResponse {
   advertiser: Advertiser | null; // Database profile row context if pre-existing
   jwtToken?: string;
 }
+ 
