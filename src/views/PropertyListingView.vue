@@ -1,127 +1,136 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { AdvertisementPropertyType } from '../models/enums'
-import type { Advertisement } from '../models/advertisement'
+import { ref, computed } from 'vue';
+import {
+    AdvertisementPropertyType,
+    AdvertisementPropertyTypeLabels,
+    AdvertisementPurpose,
+    AdvertisementPurposeLabels,
+    getPropertyTypeLabel
+} from '../models/enums';
+import type { Advertisement } from '../models/advertisement';
 
-const emit = defineEmits(['on-card-click'])
+// Core Emits and Declarations
+const emit = defineEmits(['on-card-click']);
 
-// Fixes reactivity by declaring props explicitly without ES6 destructuring
 const props = defineProps<{
     advertisements: Advertisement[]
-}>()
+}>();
 
-// Core Switch Trackers
-const isGridView = ref(true)
-const activeSliderPointersMap = ref<Record<number, number>>({})
-const showFilters = ref(true)
+// Core Layout and Switcher Tracks
+const isGridView = ref(true);
+const activeSliderPointersMap = ref<Record<number, number>>({});
+const showFilters = ref(true);
 
-// Ribbon Filters Form Reactive States
+// Ribbon Filters Reactive Data State
 const innerFilters = ref({
     searchString: '',
     propertyTypeKey: '',
     priceTierKey: '',
     purposeKey: ''
-})
+});
 
-/**
- * Dynamically extract unique property types present inside the loaded dataset
- */
+// Extract unique property types present in data using the Enums Map matrix
 const dynamicDropdownTypes = computed(() => {
-    const presentTypes = new Set<number>()
+    const presentTypes = new Set<number>();
     props.advertisements.forEach(ad => {
-        if (ad.propertyType !== undefined) presentTypes.add(ad.propertyType)
-    })
+        if (ad.propertyType !== undefined) {
+            presentTypes.add(Number(ad.propertyType));
+        }
+    });
 
     const allOptions = [
-        { value: String(AdvertisementPropertyType.PRIVATE_LAND), label: 'Private Land' },
-        { value: String(AdvertisementPropertyType.HOUSE), label: 'House' },
-        { value: String(AdvertisementPropertyType.FLAT), label: 'Flat' },
-        { value: String(AdvertisementPropertyType.COMMERCIAL_LAND), label: 'Commercial Land' },
-        { value: String(AdvertisementPropertyType.SHOP), label: 'Shop' },
-        { value: String(AdvertisementPropertyType.OFFICE), label: 'Office' },
-        { value: String(AdvertisementPropertyType.WAREHOUSE), label: 'Warehouse' }
-    ]
+        { value: String(AdvertisementPropertyType.PRIVATE_LAND), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.PRIVATE_LAND] },
+        { value: String(AdvertisementPropertyType.HOUSE), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.HOUSE] },
+        { value: String(AdvertisementPropertyType.FLAT), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.FLAT] },
+        { value: String(AdvertisementPropertyType.COMMERCIAL_LAND), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.COMMERCIAL_LAND] },
+        { value: String(AdvertisementPropertyType.SHOP), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.SHOP] },
+        { value: String(AdvertisementPropertyType.OFFICE), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.OFFICE] },
+        { value: String(AdvertisementPropertyType.WAREHOUSE), label: AdvertisementPropertyTypeLabels[AdvertisementPropertyType.WAREHOUSE] }
+    ];
 
-    return allOptions.filter(opt => presentTypes.has(Number(opt.value)))
-})
+    return allOptions.filter(opt => presentTypes.has(Number(opt.value)));
+});
 
-/**
- * Filters loaded dataset in-memory with zero redundant network requests
- */
+// Process filter matching rules against the data using strict Enum filters
 const processedAdvertisements = computed(() => {
     return props.advertisements.filter(ad => {
+        // A. Text Search Filtering Match Block
         if (innerFilters.value.searchString.trim() !== '') {
-            const query = innerFilters.value.searchString.toLowerCase()
-            const matchName = ad.name?.toLowerCase().includes(query)
-            const matchDesc = ad.description?.toLowerCase().includes(query)
-            const matchLoc = ad.location?.toLowerCase().includes(query)
-            const matchArea = ad.areaName?.toLowerCase().includes(query)
-            if (!matchName && !matchDesc && !matchLoc && !matchArea) return false
+            const query = innerFilters.value.searchString.toLowerCase();
+            const matchDesc = ad.description?.toLowerCase().includes(query);
+            const matchArea = ad.areaName?.toLowerCase().includes(query);
+            const matchName = ad.advertiserName?.toLowerCase().includes(query);
+
+            // 🌟 FIX: Removed ad.location and substituted it with district and pincode matching
+            const matchDistrict = ad.district?.toLowerCase().includes(query);
+            const matchPincode = ad.pincode?.toLowerCase().includes(query);
+
+            if (!matchDesc && !matchArea && !matchName && !matchDistrict && !matchPincode) return false;
         }
 
+        // B. Property Type Filter Mapping Evaluation
         if (innerFilters.value.propertyTypeKey !== '') {
-            if (String(ad.propertyType) !== innerFilters.value.propertyTypeKey) return false
+            if (String(ad.propertyType) !== innerFilters.value.propertyTypeKey) return false;
         }
 
+        // C. Purpose Variant Mapping Evaluation (Using Enums)
         if (innerFilters.value.purposeKey !== '') {
-            if (String(ad.purpose) !== innerFilters.value.purposeKey) return false
+            if (String(ad.purpose) !== innerFilters.value.purposeKey) return false;
         }
 
+        // D. Price Tier Range Partition Verification Rules
         if (innerFilters.value.priceTierKey !== '') {
-            const priceVal = ad.price ?? 0
-            if (innerFilters.value.priceTierKey === '1' && priceVal >= 5000000) return false
-            if (innerFilters.value.priceTierKey === '2' && (priceVal < 5000000 || priceVal > 10000000)) return false
-            if (innerFilters.value.priceTierKey === '3' && (priceVal < 10000000 || priceVal > 30000000)) return false
-            if (innerFilters.value.priceTierKey === '4' && priceVal <= 30000000) return false
+            const priceVal = ad.price;
+            if (innerFilters.value.priceTierKey === '1' && priceVal >= 5000000) return false;
+            if (innerFilters.value.priceTierKey === '2' && (priceVal < 5000000 || priceVal > 10000000)) return false;
+            if (innerFilters.value.priceTierKey === '3' && (priceVal < 10000000 || priceVal > 30000000)) return false;
+            if (innerFilters.value.priceTierKey === '4' && priceVal <= 30000000) return false;
         }
 
-        return true
-    })
-})
+        return true;
+    });
+});
 
+// Image Carousel Slide View Track Helpers
 const getActiveImageIndex = (adId: number): number => {
     if (activeSliderPointersMap.value[adId] === undefined) {
-        activeSliderPointersMap.value[adId] = 0
+        activeSliderPointersMap.value[adId] = 0;
     }
-    return activeSliderPointersMap.value[adId]
-}
+    return activeSliderPointersMap.value[adId];
+};
 
 const handlePreviousImageSlide = (adId: number, maxImagesCount: number) => {
-    if (maxImagesCount <= 1) return
-    const currentIndex = getActiveImageIndex(adId)
-    activeSliderPointersMap.value[adId] = currentIndex === 0 ? maxImagesCount - 1 : currentIndex - 1
-}
+    if (maxImagesCount <= 1) return;
+    const currentIndex = getActiveImageIndex(adId);
+    activeSliderPointersMap.value[adId] = currentIndex === 0 ? maxImagesCount - 1 : currentIndex - 1;
+};
 
 const handleNextImageSlide = (adId: number, maxImagesCount: number) => {
-    if (maxImagesCount <= 1) return
-    const currentIndex = getActiveImageIndex(adId)
-    activeSliderPointersMap.value[adId] = currentIndex === maxImagesCount - 1 ? 0 : currentIndex + 1
-}
+    if (maxImagesCount <= 1) return;
+    const currentIndex = getActiveImageIndex(adId);
+    activeSliderPointersMap.value[adId] = currentIndex === maxImagesCount - 1 ? 0 : currentIndex + 1;
+};
 </script>
 
 <template>
     <div class="property-listings-page-deck">
-
-        <!-- SUB-HEADER LAYER: Houses results counter and grouped icon-only controller triggers -->
+        <!-- SUB-HEADER LAYER: Results counter and control triggers -->
         <div class="listings-controls-sub-bar">
             <h3 class="listings-results-counter-hint">
                 Showing {{ processedAdvertisements.length }} matched real estate listings
             </h3>
 
             <div class="right-aligned-actions-cluster">
-
-                <!-- Toggle button to expand/collapse filters dropdown block panel -->
-                <button @click="showFilters = !showFilters" class="icon-only-neomorphic-action-btn"
-                    :class="{ 'action-is-active': showFilters }" title="Toggle Filter Ribbon Options" type="button">
+                <button @click="showFilters = !showFilters" class="icon-only-neomorphic-action-btn" type="button">
                     <svg class="action-btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
                 </button>
 
-                <!-- Grid view trigger icon -->
-                <button @click="isGridView = true" class="icon-only-neomorphic-action-btn"
-                    :class="{ 'action-is-active': isGridView }" title="Switch to Grid View" type="button">
+                <button @click="isGridView = true"
+                    :class="['icon-only-neomorphic-action-btn', { 'action-on-neomorphic-action-btn-is-active': isGridView }]"
+                    type="button">
                     <svg class="action-btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
                         <rect x="3" y="3" width="7" height="7"></rect>
@@ -131,33 +140,29 @@ const handleNextImageSlide = (adId: number, maxImagesCount: number) => {
                     </svg>
                 </button>
 
-                <!-- List view trigger icon -->
-                <button @click="isGridView = false" class="icon-only-neomorphic-action-btn"
-                    :class="{ 'action-is-active': !isGridView }" title="Switch to List View" type="button">
+                <button @click="isGridView = false"
+                    :class="['icon-only-neomorphic-action-btn', { 'action-on-neomorphic-action-btn-is-active': !isGridView }]"
+                    type="button">
                     <svg class="action-btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
                 </button>
-
             </div>
         </div>
 
-        <!-- ACCORDION EXPANSION BAR: Opens borderless input cells cleanly from top down -->
-        <Transition name="accordion-slide">
+        <!-- ACCORDION EXPANSION BAR: Dropdowns container row -->
+        <transition name="accordion-slide">
             <div v-if="showFilters" class="collapsible-filters-outer-container">
                 <div class="borderless-horizontal-filter-ribbon-bar">
-
-                    <div class="ribbon-filter-input-cell box-search-cell">
-                        <svg class="ribbon-cell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" placeholder="Filter by name, city, keyword..."
-                            class="ribbon-raw-textbox-input" v-model="innerFilters.searchString" />
+                    <div class="ribbon-filter-input-cell ribbon-box-search-cell">
+                        <input type="text" class="ribbon-raw-textbox-input"
+                            placeholder="Filter by name, city, keyword..." v-model="innerFilters.searchString" />
                     </div>
 
                     <div class="ribbon-filter-input-cell dropdown-cell-track">
@@ -173,47 +178,49 @@ const handleNextImageSlide = (adId: number, maxImagesCount: number) => {
                         <select v-model="innerFilters.priceTierKey" class="ribbon-raw-select-node">
                             <option value="">Any Budget Tier</option>
                             <option value="1">Under ₹50 Lakh</option>
-                            <option value="2">₹50 Lakh - ₹1 Cr</option>
-                            <option value="3">₹1 Cr - ₹3 Cr</option>
-                            <option value="4">Above ₹3 Cr</option>
+                            <option value="2">₹50 Lakh - ₹1 Crore</option>
+                            <option value="3">₹1 Crore - ₹3 Crore</option>
+                            <option value="4">Above ₹3 Crore</option>
                         </select>
                     </div>
 
                     <div class="ribbon-filter-input-cell dropdown-cell-track">
                         <select v-model="innerFilters.purposeKey" class="ribbon-raw-select-node">
                             <option value="">Sale & Rent (All)</option>
-                            <option value="0">For Sale Only</option>
-                            <option value="1">For Rent Only</option>
+                            <option :value="String(AdvertisementPurpose.SALE)">{{
+                                AdvertisementPurposeLabels[AdvertisementPurpose.SALE] }}</option>
+                            <option :value="String(AdvertisementPurpose.RENT)">{{
+                                AdvertisementPurposeLabels[AdvertisementPurpose.RENT] }}</option>
+                            <option :value="String(AdvertisementPurpose.LEASE)">{{
+                                AdvertisementPurposeLabels[AdvertisementPurpose.LEASE] }}</option>
                         </select>
                     </div>
-
                 </div>
             </div>
-        </Transition>
+        </transition>
 
-        <!-- EMPTY STATE FALLBACK WINDOW PANEL -->
+        <!-- EMPTY STATE FALLBACK SCREEN WINDOW PANEL -->
         <div v-if="processedAdvertisements.length === 0" class="empty-state-debug-hint">
             No active advertisements found matching your current filter parameters.
         </div>
 
-        <!-- DYNAMIC LISTINGS VIEWER GRID TRACK -->
-        <div v-else :class="isGridView ? 'premium-properties-grid-layout' : 'premium-properties-list-layout'">
+        <!-- DYNAMIC LISTINGS LIST LAYOUT CONTAINER ENGINE -->
+        <div v-else :class="[isGridView ? 'premium-properties-grid-layout' : 'premium-properties-list-layout']">
             <div v-for="ad in processedAdvertisements" :key="ad.advertisementId"
-                class="neomorphic-property-card-wrapper" @click="emit('on-card-click', ad)" style="cursor: pointer;">
+                class="neomorphic-property-card-wrapper" @click="emit('on-card-click', ad)">
 
-                <!-- Image Slider Viewport Enclosure -->
                 <div class="card-image-slider-viewport">
                     <div class="card-badge-row-overlay">
-                        <span class="flat-pill-badge" :class="ad.purpose === 0 ? 'badge-sale' : 'badge-rent'">
-                            {{ ad.purpose === 0 ? 'For Sale' : 'Rent' }}
+                        <!-- 🌟 FIX: Explicitly cast 'ad.purpose' via Enum assertion type layout mapping keys -->
+                        <span
+                            :class="['flat-pill-badge', ad.purpose === AdvertisementPurpose.SALE ? 'badge-sale' : 'badge-rent']">
+                            {{ AdvertisementPurposeLabels[ad.purpose as AdvertisementPurpose] || 'Listed' }}
                         </span>
-                        <span class="flat-pill-badge badge-verified">Verified</span>
+                        <span v-if="ad.isPremium === 1" class="flat-pill-badge badge-verified">Premium</span>
                     </div>
 
-                    <!-- Real Image Carousel (Rendered if media files are mapped to ad record) -->
                     <template v-if="ad.images && ad.images.length > 0">
-                        <button v-if="ad.images.length > 1"
-                            @click="handlePreviousImageSlide(ad.advertisementId, ad.images.length)"
+                        <button @click.stop="handlePreviousImageSlide(ad.advertisementId, ad.images.length)"
                             class="slider-nav-arrow arrow-left" type="button">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="3">
@@ -221,12 +228,7 @@ const handleNextImageSlide = (adId: number, maxImagesCount: number) => {
                             </svg>
                         </button>
 
-                        <!-- Optional chaining syntax fixes strict ts-plugin underline error triggers -->
-                        <img :src="ad.images?.[getActiveImageIndex(ad.advertisementId)]?.base64Data" :alt="ad.name"
-                            class="slider-img-element" />
-
-                        <button v-if="ad.images.length > 1"
-                            @click="handleNextImageSlide(ad.advertisementId, ad.images.length)"
+                        <button @click.stop="handleNextImageSlide(ad.advertisementId, ad.images.length)"
                             class="slider-nav-arrow arrow-right" type="button">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="3">
@@ -234,13 +236,12 @@ const handleNextImageSlide = (adId: number, maxImagesCount: number) => {
                             </svg>
                         </button>
 
-                        <div v-if="ad.images.length > 1" class="slider-dots-indicator-row">
-                            <span v-for="(_, index) in ad.images" :key="index" class="carousel-dot-marker"
-                                :class="{ 'marker-is-active': index === getActiveImageIndex(ad.advertisementId) }"></span>
+                        <div class="slider-dots-indicator-row">
+                            <span v-for="(_, index) in ad.images" :key="index"
+                                :class="['carousel-dot-marker', { 'carousel-dot-marker-is-active': index === getActiveImageIndex(ad.advertisementId) }]"></span>
                         </div>
                     </template>
 
-                    <!-- Fallback Placeholder Graphic Node -->
                     <template v-else>
                         <div class="fallback-placeholder-graphic-box">
                             <svg class="fallback-vector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -253,29 +254,56 @@ const handleNextImageSlide = (adId: number, maxImagesCount: number) => {
                     </template>
                 </div>
 
-                <!-- Real Estate Meta Parameter Details Box -->
                 <div class="card-textual-details-enclosure">
                     <div class="card-top-structural-row">
-                        <span class="property-area-district-label">📍 {{ ad.areaName }}, {{ ad.location }}</span>
-                        <span class="property-pricing-currency-badge">₹{{ ad.price !== undefined ? (ad.price /
-                            100000).toFixed(1) :
-                            '0.0' }} Lakh</span>
+                        <span class="property-area-district-label">
+                            <svg class="ribbon-cell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5"
+                                style="width: 12px; height: 12px; margin-right: 3px; color: var(--accent-color);">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            {{ ad.areaName }}, {{ ad.district }}
+                        </span>
+                        <span class="property-pricing-currency-badge">
+                            ₹{{ ad.price >= 10000000 ? (ad.price / 10000000).toFixed(1) + ' Cr'
+                                : (ad.price / 100000).toFixed(1) + 'Lakh' }}
+                        </span>
                     </div>
 
-                    <h4 class="property-main-display-heading" :title="ad.name">{{ ad.name }}</h4>
+                    <!-- 🌟 FIX: Explicitly cast enum key index references to prevent index signature issues -->
+                    <h4 class="property-main-display-heading">
+                        {{ getPropertyTypeLabel(ad.propertyType as AdvertisementPropertyType) }} in {{ ad.areaName }}
+                    </h4>
                     <p class="property-textual-description-paragraph">{{ ad.description }}</p>
 
                     <div class="card-technical-specs-footer-row">
                         <span class="spec-metadata-pill">PIN {{ ad.pincode }}</span>
                         <span class="spec-metadata-pill">ID #{{ ad.advertisementId }}</span>
+
+                        <template v-if="ad.propertyDetail && ad.propertyDetail.typeIndicator === 'flat'">
+                            <span class="spec-metadata-pill">{{ ad.propertyDetail.carpetArea }}</span>
+                            <span class="spec-metadata-pill">{{ ad.propertyDetail.floorNumber }}th Floor</span>
+                        </template>
+
+                        <template
+                            v-else-if="ad.propertyDetail && (ad.propertyDetail.typeIndicator === 'office' || ad.propertyDetail.typeIndicator === 'shop')">
+                            <span class="spec-metadata-pill">{{ ad.propertyDetail.area }}</span>
+                            <span class="spec-metadata-pill">{{ ad.propertyDetail.floorNo }}</span>
+                        </template>
+
+                        <template v-else-if="ad.propertyDetail && ad.propertyDetail.typeIndicator === 'land'">
+                            <span class="spec-metadata-pill">{{ ad.propertyDetail.area }} Sq.Ft.</span>
+                        </template>
                     </div>
                 </div>
 
             </div>
         </div>
-
     </div>
 </template>
+
+
 
 <style scoped>
 /* ==========================================================================

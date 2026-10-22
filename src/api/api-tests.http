@@ -1,0 +1,71 @@
+### 0. Send Request for OTP Generation (Run This First!)
+POST http://localhost:8080/api/v1/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "1234567890",
+  "email": "test@houseilla.in"
+}
+
+### 1. Authenticate & Extract JWT Secure Token
+POST http://localhost:8080/api/v1/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "1234567890",
+  "email": "test@houseilla.in",
+  "otpCode": "302650"
+}
+
+### 2. Save Advertiser Profile (Step 2 Wizard Stage)
+POST http://localhost:8080/api/v1/advertisers
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJwaG9uZSI6IjEyMzQ1Njc4OTAiLCJzdWIiOiJ0ZXN0QGhvdXNlaWxsYS5pbiIsImlhdCI6MTc5MjY4MzgwNSwiZXhwIjoxNzkyNzcwMjA1fQ.Z7OMpmftLSlek9Uns8X7OqFY5eOiXLSvRfPGqzhOhfs
+Content-Type: application/json
+
+{
+  "name": "John Doe Real Estate",
+  "phone": "1234567890",
+  "email": "test@houseilla.in",
+  "address": "Salt Lake Sector V, Kolkata",
+  "location": "Kolkata",
+  "type": 1,
+  "contractual": 1
+}
+
+
+### 3. Submit Step 3 Form Payload (Polymorphic Flat Sub-type Example)
+POST http://localhost:8080/api/v1/advertisements
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJwaG9uZSI6IjEyMzQ1Njc4OTAiLCJzdWIiOiJ0ZXN0QGhvdXNlaWxsYS5pbiIsImlhdCI6MTc5MjY4MzgwNSwiZXhwIjoxNzkyNzcwMjA1fQ.Z7OMpmftLSlek9Uns8X7OqFY5eOiXLSvRfPGqzhOhfs
+Content-Type: application/json
+
+{
+  "category": 1,
+  "propertyType": 1,
+  "price": 450000.0,
+  "description": "Stunning top-floor flat overlooking Kolkata skyline.",
+  "isPremium": 0,
+  "propertyNumber": "B-702",
+  "areaName": "Salt Lake Sector V",
+  "addressLine1": "Block EP & GP",
+  "district": "North 24 Parganas",
+  "pincode": "700091",
+  "latitude": 22.5735,
+  "longitude": 88.4331,
+  "advertiser": {
+    "advertiserId": 1
+  },
+  "propertyDetail": {
+    "typeIndicator": "flat",
+    "isRent": 1,
+    "isCommunity": 1,
+    "buildingRising": 24,
+    "floorNumber": 7,
+    "carpetArea": "1450 sqft",
+    "flatType": 3,
+    "liftAvailable": 1,
+    "parkings": 3,
+    "possessionBy": "Immediate",
+    "propertyAge": 1,
+    "amenities": "Infinity Pool, Gymnasium, 24/7 Power Backup"
+  }
+}

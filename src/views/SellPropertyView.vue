@@ -124,10 +124,13 @@ const confirmOtpVerification = async () => {
             isOtpVerified.value = true;
             isOtpSuccess.value = true;
 
+            console.log('OTP verification received data {}', data);
+
             // FIXED CONDITION MATCH: Read data directly from your backend key response map
-            if (data.isPreExisting && data.advertiser) {
+            if (data.isProfileExisting && data.advertiser) {
+                console.log('Pre-existing advertiser {} row verified. Promoting straight to update profile view.', data.advertiser);
                 authenticatedAdvertiser.value = data.advertiser;
-                console.log('Pre-existing advertiser row verified. Promoting straight to update profile view.');
+
 
             } else {
                 // Build new blank template entity data object layout values

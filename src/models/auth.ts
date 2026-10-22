@@ -16,7 +16,7 @@ export interface OtpRequest {
 export interface AuthVerificationResponse {
   success: boolean;
   message: string;
-  isPreExisting: boolean;
+  isProfileExisting: boolean; 
   advertiser: Advertiser | null; // Database profile row context if pre-existing
   jwtToken?: string;
 }
