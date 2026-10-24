@@ -1,16 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { authService } from '../services/authService';
-import type { OtpRequest } from '../models/auth';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import type { Advertiser } from '../models/advertisement';
-// Pulls your existing enum labels map straight from your project's configuration file
-import { AdvertiserType, AdvertiserTypeLabels, getAdvertiserTypeLabel } from '../models/enums';
-import { advertiserService } from '../services/advertiserService';
 
+// 1. Import the newly decoupled child step view modules
+import Step1Auth from './sell/Step1Auth.vue';
+import Step2Profile from './sell/Step2Profile.vue';
 
-/**
- * Natively binds each layout stage step to your exact preserved main.css class names
- */
 const getStageColorClass = (stepIndex: number): string => {
     const colorMap: Record<number, string> = {
         1: 'dot-brand-blue',
@@ -24,9 +19,7 @@ const getStageColorClass = (stepIndex: number): string => {
     return colorMap[stepIndex] || 'dot-brand-blue';
 };
 
-// =====================================================================
-// A. CORE STATE WIZARD LAYOUT SWITCH ENUMS
-// =====================================================================
+// Core type-safe wizard progression state engine definitions
 enum WizardStep {
     IDENTIFICATION = 1,
     PROFILE = 2,
@@ -40,21 +33,11 @@ enum WizardStep {
 const currentStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
 const maxVisitedStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
 
-const isOtpSent = ref(false);
-const isOtpVerified = ref(false);
-const isOtpSuccess = ref(false);
 const validationError = ref(false);
-const errorMessage = ref('');
 
-const authForm = ref<OtpRequest>({
-    phone: '',
-    email: '',
-    otpCode: ''
-});
-
+// Shared database context instance passed downstream across active steps
 const authenticatedAdvertiser = ref<Advertiser | null>(null);
 
-// Dynamic mapping dictionary for step tracking text strings
 const getStepLabel = (stepIndex: number): string => {
     const stepsMap: Record<number, string> = {
         1: 'Advertiser Identification',
@@ -68,142 +51,21 @@ const getStepLabel = (stepIndex: number): string => {
     return stepsMap[stepIndex] || 'Unknown Step';
 };
 
-// =====================================================================
-// B. REGEX UTILITY VALIDATORS
-// =====================================================================
-const isPhoneValid = () => /^\d{10}$/.test(authForm.value.phone.trim());
-const isEmailValid = () => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(authForm.value.email.trim());
-const isOtpValid = () => /^\d{6}$/.test(authForm.value.otpCode.trim());
-
-const isNameValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.name.trim().length > 0;
-const isTypeValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.type !== undefined;
-
-// =====================================================================
-// C. API TRANSACTION DISPATCH METRICS
-// =====================================================================
-const verifyAdvertiser = async () => {
-    validationError.value = false;
-    errorMessage.value = '';
-
-    if (!isPhoneValid() || !isEmailValid()) {
-        validationError.value = true;
-        errorMessage.value = 'Please enter a valid phone number and formatted email address.';
-        return;
-    }
-
-    try {
-        const data = await authService.sendOtp(authForm.value);
-        if (data.success) {
-            isOtpSent.value = true;
-        } else {
-            validationError.value = true;
-            errorMessage.value = data.message || 'Failed to send OTP. Please try again.';
-        }
-    } catch (error) {
-        validationError.value = true;
-        errorMessage.value = 'Cannot connect to backend authentication server.';
-    }
+// 2. Intercept successful verification payload emitted from Step 1 module layout
+const handleAuthSuccess = (payload: { advertiser: any; nextStep: number }) => {
+    authenticatedAdvertiser.value = payload.advertiser;
+    maxVisitedStep.value = payload.nextStep as WizardStep;
+    currentStep.value = payload.nextStep as WizardStep;
 };
 
-const confirmOtpVerification = async () => {
-    validationError.value = false;
-    errorMessage.value = '';
-    isOtpSuccess.value = false;
-
-    if (!isOtpValid()) {
-        validationError.value = true;
-        errorMessage.value = 'Please enter a valid 6-digit numeric OTP.';
-        return;
-    }
-
-    try {
-        const data = await authService.verifyOtp(authForm.value);
-
-        if (data.success) {
-            console.log('OTP Verification Passed Successfully!');
-            isOtpVerified.value = true;
-            isOtpSuccess.value = true;
-
-            console.log('OTP verification received data {}', data);
-
-            // FIXED CONDITION MATCH: Read data directly from your backend key response map
-            if (data.isProfileExisting && data.advertiser) {
-                console.log('Pre-existing advertiser {} row verified. Promoting straight to update profile view.', data.advertiser);
-                authenticatedAdvertiser.value = data.advertiser;
-
-
-            } else {
-                // Build new blank template entity data object layout values
-                authenticatedAdvertiser.value = {
-                    advertiserId: 0,
-                    name: '',
-                    phone: authForm.value.phone.trim(),
-                    email: authForm.value.email.trim(),
-                    address: '',
-                    location: '',
-                    type: 0,
-                    contractual: 0
-                };
-                console.log('Advertiser Profile Successfully Initialized:', authenticatedAdvertiser.value);
-            }
-
-            maxVisitedStep.value = WizardStep.PROFILE;
-            currentStep.value = WizardStep.PROFILE;
-
-        } else {
-            validationError.value = true;
-            errorMessage.value = data.message || 'The verification code entered is incorrect.';
-        }
-    } catch (error) {
-        validationError.value = true;
-        errorMessage.value = 'Failed to process verification code validation.';
-    }
+// 3. Intercept successful database profile save emitted from Step 2 module layout
+const handleProfileSuccess = (updatedAdvertiser: Advertiser) => {
+    authenticatedAdvertiser.value = updatedAdvertiser;
+    maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
+    currentStep.value = WizardStep.ADD_ADVERTISEMENT;
 };
 
-const saveAdvertiserProfile = async () => {
-    validationError.value = false;
-    errorMessage.value = '';
-
-    // 1. Enforce validation parameter checks before initiating network traffic
-    if (!isNameValid()) {
-        validationError.value = true;
-        errorMessage.value = 'Please enter your full name to complete your profile.';
-        return;
-    }
-    if (!isTypeValid()) {
-        validationError.value = true;
-        errorMessage.value = 'Please select your advertiser account profile type.';
-        return;
-    }
-
-    try {
-        // 2. Dispatch data package safely through your secure header fetch client wrapper
-        const response = await advertiserService.saveAdvertiserProfile(authenticatedAdvertiser.value!);
-
-        if (response.success && response.advertiser) {
-            console.log('Profile processed and saved down to database successfully!', response.advertiser);
-
-            // Update local state snapshot with the official auto-generated Advertiser ID from the DB
-            authenticatedAdvertiser.value = response.advertiser;
-
-            // 3. AUTO-PROMOTION: Advance your type-safe Enum wizard step forward to Step 3 (Add Advertisement)
-            maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
-            currentStep.value = WizardStep.ADD_ADVERTISEMENT;
-
-        } else {
-            validationError.value = true;
-            errorMessage.value = response.message || 'Failed to submit profile updates. Please try again.';
-        }
-    } catch (error) {
-        validationError.value = true;
-        errorMessage.value = 'Failed communicating with backend security layers.';
-        console.error('API submission transaction faulted:', error);
-    }
-};
-
-// =====================================================================
-// D. CLICK-OUTSIDE DISPATCH POPOVER MAP INTERACTIVE ROUTERS
-// =====================================================================
+// Popover Menu Configuration Interactions
 const isMapExpanded = ref(false);
 const dropdownElementRef = ref<HTMLElement | null>(null);
 
@@ -225,21 +87,9 @@ const selectCustomStep = (targetStepNumber: number) => {
 
 onMounted(() => window.addEventListener('click', handleWindowOutsideClick));
 onUnmounted(() => window.removeEventListener('click', handleWindowOutsideClick));
-
-const advertiserTypeOptions = computed(() => {
-    // Directly loops through your strict numeric keys (0, 1, 2) to maintain perfect type protection
-    return [AdvertiserType.BROKER, AdvertiserType.BUILDER, AdvertiserType.INDIVIDUAL].map((enumValue) => ({
-        value: enumValue,
-        label: getAdvertiserTypeLabel(enumValue) // Natively pulls: 'Broker / Agent', etc.
-    }));
-});
 </script>
-
 <template>
-
-    <!--
-    COMMON SECTION Starts
-    -->
+    <!-- COMMON SECTION Starts -->
     <div class="horizontal-steps-nav">
 
         <!-- CUSTOM INLINE POPOVER TRIGGER ENGINE -->
@@ -275,13 +125,11 @@ const advertiserTypeOptions = computed(() => {
                 'is-accessible-stage': stepNum <= maxVisitedStep && currentStep !== stepNum,
                 'is-locked-stage': stepNum > maxVisitedStep
             }" @click="selectCustomStep(stepNum)" :title="getStepLabel(stepNum)">
-                <!-- COLORFUL DOT SELECTION LOOP MATCHING PRESERVED CLASS NAMES -->
                 <span class="universal-status-dot" :class="[
                     getStageColorClass(stepNum),
                     { 'is-matt-disabled': stepNum > maxVisitedStep }
                 ]"></span>
 
-                <!-- INLINE ACTIVE TEXT BLOCK: Only visible for the current active step -->
                 <span v-if="currentStep === stepNum" class="timeline-active-label-text">
                     {{ getStepLabel(stepNum) }}
                 </span>
@@ -289,199 +137,32 @@ const advertiserTypeOptions = computed(() => {
         </div>
 
     </div>
-
-    <!--
-    COMMON SECTION ENDS
-    -->
+    <!-- COMMON SECTION ENDS -->
 
 
-    <!--STEP 1 IDENTIFICATION STARTS-->
+    <!-- STEP 1 IDENTIFICATION: Isolated Child Layer Module -->
+    <Step1Auth v-if="currentStep === WizardStep.IDENTIFICATION" @auth-completed="handleAuthSuccess" />
 
-    <div v-if="currentStep === WizardStep.IDENTIFICATION" class="vertical-stack-form shadow-clipping-safe-zone">
 
-        <!-- Phone Number Input Field Wrapper -->
-        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isPhoneValid() }">
-            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path
-                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-            </svg>
-            <!-- CORES LOCK RULE: Keeps field uneditable once OTP check passes -->
-            <input type="tel" class="flat-raw-input" placeholder="Enter Phone Number..." v-model="authForm.phone"
-                maxlength="10" @input="authForm.phone = authForm.phone.replace(/\D/g, '')"
-                :disabled="isOtpSent || isOtpVerified" />
-        </div>
+    <!-- STEP 2 PROFILE: Render Decoupled Child Component and listen for save triggers -->
+    <Step2Profile v-if="currentStep === WizardStep.PROFILE" :advertiserData="authenticatedAdvertiser"
+        @profile-completed="handleProfileSuccess" />
 
-        <div class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
 
-        <!-- Email Address Input Field Wrapper -->
-        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isEmailValid() }">
-            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-            </svg>
-            <!-- CORES LOCK RULE: Keeps field uneditable once OTP check passes -->
-            <input type="email" class="flat-raw-input" placeholder="Enter Email Address..." v-model="authForm.email"
-                @input="authForm.email = authForm.email.trim().toLowerCase()" :disabled="isOtpSent || isOtpVerified" />
-        </div>
-
-        <!-- Validation Error Placement at Bottom -->
-        <div v-if="validationError" class="filter-vertical-row">
-            <span class="flat-error-descriptor-text">
-                {{ errorMessage }}
-            </span>
-        </div>
-
-        <!-- SUCCESS PLACEHOLDER BANNER: Appears in Area 1 when verification completes -->
-        <div v-if="isOtpSuccess" class="filter-vertical-row animation-fade-in-smooth"
-            style="margin-top: 12px; margin-bottom: 4px;">
-            <div class="flat-success-banner-card">
-                <svg class="success-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                <span class="flat-success-descriptor-text">
-                    OTP verified successfully!
-                </span>
-            </div>
-        </div>
-
-        <div v-else class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
-
-        <!-- Step 2 Dynamic Reveal: OTP Code Input Section -->
-
-        <!-- Verification OTP Input Section (Hides cleanly once verified) -->
-        <div v-if="isOtpSent && !isOtpVerified" class="otp-input-reveal-wrapper">
-            <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isOtpValid() }">
-                <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-                <input type="text" class="flat-raw-input" placeholder="Enter 6-Digit OTP..." v-model="authForm.otpCode"
-                    maxlength="6" @input="authForm.otpCode = authForm.otpCode.replace(/\D/g, '')" />
-            </div>
-        </div>
-
-        <div v-if="isOtpSent && !isOtpVerified" class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
-
-        <!-- ACTION TRIGGER ZONE: Entire button container collapses out of view when verified -->
-        <div v-if="!isOtpVerified" class="flat-btn-row-wrapper">
-            <button @click="isOtpSent ? confirmOtpVerification() : verifyAdvertiser()"
-                class="flat-full-width-action-btn" type="button">
-                <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <span class="btn-text-label">
-                    {{ isOtpSent ? 'Verify OTP Code' : 'Identify Advertiser' }}
-                </span>
-            </button>
-        </div>
-
+    <!-- Placeholder Workspace UI for Remaining Setup Steps (3 to 7) -->
+    <div v-if="currentStep >= 3" class="vertical-stack-form shadow-clipping-safe-zone"
+        style="padding: 24px; background-color: #ffffff; text-align: center;">
+        <h3 class="font-bold text-gray-800" style="font-size: 14px;">Step {{ currentStep }}: {{
+            getStepLabel(currentStep) }} Panel Active</h3>
+        <p class="text-xs text-gray-400 mt-1">Profile context synchronized for Advertiser ID: #{{
+            authenticatedAdvertiser?.advertiserId }}</p>
     </div>
-    <!--STEP 1 IDENTIFICATION Ends-->
-
-
-    <!-- ========================================== -->
-    <!-- STEP 2: ADVERTISER PROFILE VIEWS           -->
-    <!-- ========================================== -->
-    <div v-if="currentStep === WizardStep.PROFILE" class="vertical-stack-form shadow-clipping-safe-zone">
-        <!--
-        <div class="universal-view-header-row" style="margin-bottom: 12px;">
-            <h3 style="font-size: 15px; font-weight: 600; color: #1e293b; margin: 0;">
-                {{ authenticatedAdvertiser?.advertiserId ? 'Update Profile Details' : 'Advertiser Profile Details' }}
-            </h3>
-        </div>
-        -->
-
-        <!-- 1. LOCKED VERIFIED PHONE NUMBER FIELD ON TOP -->
-        <div class="flat-form-field">
-            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path
-                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-            </svg>
-            <input type="tel" class="flat-raw-input" v-model="authenticatedAdvertiser!.phone" disabled />
-        </div>
-
-        <div class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
-
-        <!-- 2. LOCKED VERIFIED EMAIL ADDRESS FIELD -->
-        <div class="flat-form-field">
-            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-            </svg>
-            <input type="email" class="flat-raw-input" v-model="authenticatedAdvertiser!.email" disabled />
-        </div>
-
-        <div class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
-
-        <!-- 3. EDITABLE FULL NAME INPUT FIELD -->
-        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isNameValid() }">
-            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-            </svg>
-            <input type="text" class="flat-raw-input" placeholder="Enter Full Name..."
-                v-model="authenticatedAdvertiser!.name" />
-        </div>
-
-        <div class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
-
-        <!-- 4. EDITABLE ADVERTISER TYPE RADIO SELECTION BLOCK -->
-        <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid() }">
-            <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
-                :class="{ 'is-active-node': option.value === authenticatedAdvertiser!.type }">
-                <input type="radio" name="advertiserTypeGroup" :value="option.value"
-                    v-model="authenticatedAdvertiser!.type"
-                    style="position: absolute; opacity: 0; width: 0; height: 0;" />
-                <span class="custom-radio-dot"></span>
-                <span class="label-caption-string">{{ option.label }}</span>
-            </label>
-        </div>
-
-        <!-- Local Validation Error Display block -->
-        <div v-if="validationError" class="filter-vertical-row" style="margin-top: 12px; margin-bottom: -4px;">
-            <span class="flat-error-descriptor-text">
-                {{ errorMessage }}
-            </span>
-        </div>
-
-        <div class="divider-line-container">
-            <span class="horizontal-hairline-divider"></span>
-        </div>
-
-        <!-- 5. SAVE PROFILE FOOTER ACTION BUTTON -->
-        <div class="flat-btn-row-wrapper">
-            <button @click="saveAdvertiserProfile" class="flat-full-width-action-btn" type="button">
-                <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                </svg>
-                <span class="btn-text-label">
-                    {{ authenticatedAdvertiser?.advertiserId ?
-                        'Update Profile Details' : 'SaveProfile Details' }}
-                </span>
-            </button>
-        </div>
-
-    </div>
-    <!-- STEP 2 PROFILE ENDS -->
-
 </template>
 
 <style scoped>
-/* Container framework alignment rules */
+/* =====================================================================
+   1. MASTER CONTAINER FRAMEWORK NAVIGATION & PROGRESS TIMELINE
+   ===================================================================== */
 .horizontal-steps-nav {
     display: flex;
     align-items: center;
@@ -496,7 +177,6 @@ const advertiserTypeOptions = computed(() => {
     flex-shrink: 0;
 }
 
-/* Custom layout trigger text label node */
 .custom-step-trigger-btn {
     display: inline-flex;
     align-items: center;
@@ -523,7 +203,6 @@ const advertiserTypeOptions = computed(() => {
     transform: rotate(180deg);
 }
 
-/* FLOATING INDEPENDENT OVERLAY LIST BOX POPUP CONTAINER */
 .custom-dropdown-popover-box {
     position: absolute;
     top: calc(100% + 6px);
@@ -540,7 +219,6 @@ const advertiserTypeOptions = computed(() => {
     z-index: 9999;
 }
 
-/* INDIVIDUAL CUSTOM ROW SELECTION ITEMS */
 .custom-popover-option-row {
     padding: 8px 12px;
     font-size: 13.5px;
@@ -550,7 +228,6 @@ const advertiserTypeOptions = computed(() => {
     transition: background-color 0.15s ease;
 }
 
-/* CUSTOM HIGHLIGHTING STATE COLORS (0% TICK MARKS) */
 .opt-custom-active {
     color: #0076df !important;
     font-weight: 600 !important;
@@ -581,9 +258,6 @@ const advertiserTypeOptions = computed(() => {
     flex-shrink: 0;
 }
 
-/* =====================================================================
-   GEOMETRIC TIMELINE FLEX GRID TRACKING LAYOUT
-   ===================================================================== */
 .geometric-timeline-row-container {
     display: flex;
     align-items: center;
@@ -606,23 +280,14 @@ const advertiserTypeOptions = computed(() => {
     cursor: pointer;
 }
 
-.is-locked-unvisited-stage {
+.is-locked-stage {
     cursor: not-allowed;
-}
-
-/* DYNAMIC PROGRESS MODIFIERS: Handles custom dimming for unvisited states */
-.universal-status-dot.disabled-orange-modifier {
-    opacity: 0.35 !important;
-    /* Elegant neomorphic disabled layout appearance */
-    transition: opacity 0.2s ease;
 }
 
 .is-accessible-stage:hover .universal-status-dot {
     transform: scale(1.15);
-    /* Soft visual feedback on hover */
 }
 
-/* Active Text string display properties */
 .timeline-active-label-text {
     font-size: 13.5px;
     font-weight: 600;
@@ -643,5 +308,279 @@ const advertiserTypeOptions = computed(() => {
         transform: translateX(0);
         max-width: 300px;
     }
+}
+
+/* =====================================================================
+   2. CHILD COMPONENT FORM HOOK INJECTIONS (DEEP INTERCEPTION RULES)
+   ===================================================================== */
+
+/* Force structural layout stacks to flow cleanly downwards */
+:deep(.vertical-stack-form) {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+/* Form Input Boundaries */
+:deep(.flat-form-field) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 48px;
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0 16px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:deep(.flat-form-field:focus-within) {
+    border-color: #0076df !important;
+    box-shadow: 0 0 0 3px rgba(0, 118, 223, 0.1) !important;
+}
+
+:deep(.flat-field-icon) {
+    width: 18px;
+    height: 18px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+:deep(.flat-raw-input) {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: #1e293b;
+    background-color: transparent;
+}
+
+:deep(.flat-raw-input::placeholder) {
+    color: #94a3b8;
+}
+
+:deep(.flat-raw-input:disabled) {
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+/* Radio Element Form Rows */
+:deep(.borderless-flat-radio-row) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+    padding: 4px 8px;
+}
+
+:deep(.flat-radio-label-node) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+:deep(.custom-radio-dot) {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 50%;
+    background-color: #ffffff;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+:deep(.flat-radio-label-node input[type="radio"]:checked + .custom-radio-dot) {
+    border-color: #0076df;
+    background-color: #0076df;
+}
+
+:deep(.flat-radio-label-node input[type="radio"]:checked + .custom-radio-dot::after) {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #ffffff;
+}
+
+:deep(.label-caption-string) {
+    font-size: 14px;
+    font-weight: 550;
+    color: #475569;
+    transition: color 0.15s ease;
+}
+
+:deep(.flat-radio-label-node:hover .label-caption-string) {
+    color: #1e293b;
+}
+
+/* Master Action Button Containers */
+:deep(.flat-btn-row-wrapper) {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+}
+
+:deep(.flat-full-width-action-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 48px;
+    background-color: #1e293b;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+:deep(.flat-full-width-action-btn:hover) {
+    background-color: #0f172a;
+}
+
+:deep(.flat-full-width-action-btn:active) {
+    transform: scale(0.995);
+}
+
+:deep(.flat-btn-icon) {
+    width: 16px;
+    height: 16px;
+    color: #ffffff;
+}
+
+:deep(.btn-text-label) {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: 0.2px;
+}
+
+/* Separator & Line Managers */
+:deep(.divider-line-container) {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+}
+
+:deep(.horizontal-hairline-divider) {
+    width: 100%;
+    height: 1px;
+    background-color: #f1f5f9;
+}
+
+/* Validation Status Cards & Alerts */
+:deep(.is-invalid-field) {
+    border-color: #ea580c !important;
+    background-color: rgba(234, 88, 12, 0.01) !important;
+}
+
+:deep(.filter-vertical-row) {
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+}
+
+:deep(.flat-error-descriptor-text) {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #ea580c;
+}
+
+:deep(.flat-success-banner-card) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    background-color: rgba(0, 118, 223, 0.05);
+    border: 1px solid rgba(0, 118, 223, 0.15);
+    border-radius: 10px;
+}
+
+:deep(.success-check-icon) {
+    width: 16px;
+    height: 16px;
+    color: #0076df;
+}
+
+:deep(.flat-success-descriptor-text) {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #0076df;
+}
+
+/* =====================================================================
+   3. GLOBAL NIGHT MODE DYNAMIC CONTRAST TUNERS
+   ===================================================================== */
+:deep(.timeline-active-label-text) {
+    color: #1e293b;
+    transition: color 0.25s ease;
+}
+
+/* Block A: Handles your explicit dark mode class toggle selectors */
+:global(.ion-palette-dark) .timeline-active-label-text,
+:global([data-theme="dark"]) .timeline-active-label-text,
+:global(.ion-palette-dark) :deep(.timeline-active-label-text),
+:global([data-theme="dark"]) :deep(.timeline-active-label-text) {
+    color: #f8fafc !important;
+}
+
+/* Block B: Handles isolated system hardware dark mode preferences safely */
+@media (prefers-color-scheme: dark) {
+
+    .timeline-active-label-text,
+    :deep(.timeline-active-label-text) {
+        color: #f8fafc !important;
+    }
+}
+
+
+:global(.ion-palette-dark) :deep(.flat-form-field),
+:global([data-theme="dark"]) :deep(.flat-form-field) {
+    background-color: #1e2530 !important;
+    border-color: #334155 !important;
+}
+
+:global(.ion-palette-dark) :deep(.flat-raw-input),
+:global([data-theme="dark"]) :deep(.flat-raw-input) {
+    color: #f8fafc !important;
+}
+
+:global(.ion-palette-dark) :deep(.flat-raw-input::placeholder),
+:global([data-theme="dark"]) :deep(.flat-raw-input::placeholder) {
+    color: #475569 !important;
+}
+
+:global(.ion-palette-dark) :deep(.custom-radio-dot),
+:global([data-theme="dark"]) :deep(.custom-radio-dot) {
+    background-color: #1e2530 !important;
+    border-color: #475569 !important;
+}
+
+:global(.ion-palette-dark) :deep(.label-caption-string),
+:global([data-theme="dark"]) :deep(.label-caption-string) {
+    color: #94a3b8 !important;
+}
+
+:global(.ion-palette-dark) :deep(.horizontal-hairline-divider),
+:global([data-theme="dark"]) :deep(.horizontal-hairline-divider) {
+    background-color: #334155 !important;
+}
+
+:global(.ion-palette-dark) :deep(.flat-full-width-action-btn),
+:global([data-theme="dark"]) :deep(.flat-full-width-action-btn) {
+    background-color: #3b82f6 !important;
 }
 </style>

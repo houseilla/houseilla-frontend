@@ -1,0 +1,647 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { authService } from '../services/authService';
+import type { OtpRequest } from '../models/auth';
+import type { Advertiser } from '../models/advertisement';
+// Pulls your existing enum labels map straight from your project's configuration file
+import { AdvertiserType, AdvertiserTypeLabels, getAdvertiserTypeLabel } from '../models/enums';
+import { advertiserService } from '../services/advertiserService';
+
+
+/**
+ * Natively binds each layout stage step to your exact preserved main.css class names
+ */
+const getStageColorClass = (stepIndex: number): string => {
+    const colorMap: Record<number, string> = {
+        1: 'dot-brand-blue',
+        2: 'dot-brand-orange',
+        3: 'dot-brand-gold',
+        4: 'dot-brand-green',
+        5: 'dot-brand-purple',
+        6: 'dot-brand-teal',
+        7: 'dot-brand-red'
+    };
+    return colorMap[stepIndex] || 'dot-brand-blue';
+};
+
+// =====================================================================
+// A. CORE STATE WIZARD LAYOUT SWITCH ENUMS
+// =====================================================================
+enum WizardStep {
+    IDENTIFICATION = 1,
+    PROFILE = 2,
+    ADD_ADVERTISEMENT = 3,
+    PROPERTY_LOCATION = 4,
+    PROPERTY_TYPE_PURPOSE = 5,
+    PROPERTY_DETAILS = 6,
+    PHOTOS_MEDIA = 7
+}
+
+const currentStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
+const maxVisitedStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
+
+const isOtpSent = ref(false);
+const isOtpVerified = ref(false);
+const isOtpSuccess = ref(false);
+const validationError = ref(false);
+const errorMessage = ref('');
+
+const authForm = ref<OtpRequest>({
+    phone: '',
+    email: '',
+    otpCode: ''
+});
+
+const authenticatedAdvertiser = ref<Advertiser | null>(null);
+
+// Dynamic mapping dictionary for step tracking text strings
+const getStepLabel = (stepIndex: number): string => {
+    const stepsMap: Record<number, string> = {
+        1: 'Advertiser Identification',
+        2: 'Advertiser Profile',
+        3: 'Add/Update Advertisements',
+        4: 'Property Location',
+        5: 'Property Type & Purpose',
+        6: 'Property Details',
+        7: 'Photos & Media'
+    };
+    return stepsMap[stepIndex] || 'Unknown Step';
+};
+
+// =====================================================================
+// B. REGEX UTILITY VALIDATORS
+// =====================================================================
+const isPhoneValid = () => /^\d{10}$/.test(authForm.value.phone.trim());
+const isEmailValid = () => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(authForm.value.email.trim());
+const isOtpValid = () => /^\d{6}$/.test(authForm.value.otpCode.trim());
+
+const isNameValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.name.trim().length > 0;
+const isTypeValid = () => authenticatedAdvertiser.value && authenticatedAdvertiser.value.type !== undefined;
+
+// =====================================================================
+// C. API TRANSACTION DISPATCH METRICS
+// =====================================================================
+const verifyAdvertiser = async () => {
+    validationError.value = false;
+    errorMessage.value = '';
+
+    if (!isPhoneValid() || !isEmailValid()) {
+        validationError.value = true;
+        errorMessage.value = 'Please enter a valid phone number and formatted email address.';
+        return;
+    }
+
+    try {
+        const data = await authService.sendOtp(authForm.value);
+        if (data.success) {
+            isOtpSent.value = true;
+        } else {
+            validationError.value = true;
+            errorMessage.value = data.message || 'Failed to send OTP. Please try again.';
+        }
+    } catch (error) {
+        validationError.value = true;
+        errorMessage.value = 'Cannot connect to backend authentication server.';
+    }
+};
+
+const confirmOtpVerification = async () => {
+    validationError.value = false;
+    errorMessage.value = '';
+    isOtpSuccess.value = false;
+
+    if (!isOtpValid()) {
+        validationError.value = true;
+        errorMessage.value = 'Please enter a valid 6-digit numeric OTP.';
+        return;
+    }
+
+    try {
+        const data = await authService.verifyOtp(authForm.value);
+
+        if (data.success) {
+            console.log('OTP Verification Passed Successfully!');
+            isOtpVerified.value = true;
+            isOtpSuccess.value = true;
+
+            console.log('OTP verification received data {}', data);
+
+            // FIXED CONDITION MATCH: Read data directly from your backend key response map
+            if (data.isProfileExisting && data.advertiser) {
+                console.log('Pre-existing advertiser {} row verified. Promoting straight to update profile view.', data.advertiser);
+                authenticatedAdvertiser.value = data.advertiser;
+
+
+            } else {
+                // Build new blank template entity data object layout values
+                authenticatedAdvertiser.value = {
+                    advertiserId: 0,
+                    name: '',
+                    phone: authForm.value.phone.trim(),
+                    email: authForm.value.email.trim(),
+                    address: '',
+                    location: '',
+                    type: 0,
+                    contractual: 0
+                };
+                console.log('Advertiser Profile Successfully Initialized:', authenticatedAdvertiser.value);
+            }
+
+            maxVisitedStep.value = WizardStep.PROFILE;
+            currentStep.value = WizardStep.PROFILE;
+
+        } else {
+            validationError.value = true;
+            errorMessage.value = data.message || 'The verification code entered is incorrect.';
+        }
+    } catch (error) {
+        validationError.value = true;
+        errorMessage.value = 'Failed to process verification code validation.';
+    }
+};
+
+const saveAdvertiserProfile = async () => {
+    validationError.value = false;
+    errorMessage.value = '';
+
+    // 1. Enforce validation parameter checks before initiating network traffic
+    if (!isNameValid()) {
+        validationError.value = true;
+        errorMessage.value = 'Please enter your full name to complete your profile.';
+        return;
+    }
+    if (!isTypeValid()) {
+        validationError.value = true;
+        errorMessage.value = 'Please select your advertiser account profile type.';
+        return;
+    }
+
+    try {
+        // 2. Dispatch data package safely through your secure header fetch client wrapper
+        const response = await advertiserService.saveAdvertiserProfile(authenticatedAdvertiser.value!);
+
+        if (response.success && response.advertiser) {
+            console.log('Profile processed and saved down to database successfully!', response.advertiser);
+
+            // Update local state snapshot with the official auto-generated Advertiser ID from the DB
+            authenticatedAdvertiser.value = response.advertiser;
+
+            // 3. AUTO-PROMOTION: Advance your type-safe Enum wizard step forward to Step 3 (Add Advertisement)
+            maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
+            currentStep.value = WizardStep.ADD_ADVERTISEMENT;
+
+        } else {
+            validationError.value = true;
+            errorMessage.value = response.message || 'Failed to submit profile updates. Please try again.';
+        }
+    } catch (error) {
+        validationError.value = true;
+        errorMessage.value = 'Failed communicating with backend security layers.';
+        console.error('API submission transaction faulted:', error);
+    }
+};
+
+// =====================================================================
+// D. CLICK-OUTSIDE DISPATCH POPOVER MAP INTERACTIVE ROUTERS
+// =====================================================================
+const isMapExpanded = ref(false);
+const dropdownElementRef = ref<HTMLElement | null>(null);
+
+const handleWindowOutsideClick = (event: MouseEvent) => {
+    const targetNode = event.target as HTMLElement;
+    if (isMapExpanded.value && dropdownElementRef.value && !dropdownElementRef.value.contains(targetNode)) {
+        isMapExpanded.value = false;
+    }
+};
+
+const selectCustomStep = (targetStepNumber: number) => {
+    const targetStep = targetStepNumber as WizardStep;
+    if (targetStep <= maxVisitedStep.value) {
+        currentStep.value = targetStep;
+        isMapExpanded.value = false;
+        validationError.value = false;
+    }
+};
+
+onMounted(() => window.addEventListener('click', handleWindowOutsideClick));
+onUnmounted(() => window.removeEventListener('click', handleWindowOutsideClick));
+
+const advertiserTypeOptions = computed(() => {
+    // Directly loops through your strict numeric keys (0, 1, 2) to maintain perfect type protection
+    return [AdvertiserType.BROKER, AdvertiserType.BUILDER, AdvertiserType.INDIVIDUAL].map((enumValue) => ({
+        value: enumValue,
+        label: getAdvertiserTypeLabel(enumValue) // Natively pulls: 'Broker / Agent', etc.
+    }));
+});
+</script>
+
+<template>
+
+    <!--
+    COMMON SECTION Starts
+    -->
+    <div class="horizontal-steps-nav">
+
+        <!-- CUSTOM INLINE POPOVER TRIGGER ENGINE -->
+        <div class="step-custom-dropdown-container" ref="dropdownElementRef">
+            <div class="custom-step-trigger-btn" @click="isMapExpanded = !isMapExpanded">
+                <span class="active-count-num">Step {{ currentStep }} of 7</span>
+                <svg class="custom-native-dropdown-arrow-svg" :class="{ 'arrow-rotated': isMapExpanded }"
+                    viewBox="0 0 24 24" fill="none">
+                    <path d="M6 9l6 6 6-6" stroke="#0076df" stroke-width="3" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </div>
+
+            <!-- CUSTOM POPUP MENU -->
+            <div v-if="isMapExpanded" class="custom-dropdown-popover-box" @click.stop>
+                <div v-for="stepNum in 7" :key="stepNum" class="custom-popover-option-row" :class="{
+                    'opt-custom-active': currentStep === stepNum,
+                    'opt-custom-accessible': stepNum <= maxVisitedStep && currentStep !== stepNum,
+                    'opt-custom-locked': stepNum > maxVisitedStep
+                }" @click="selectCustomStep(stepNum)">
+                    {{ currentStep === stepNum ? `Step ${stepNum} of 7` : `Step ${stepNum} of 7:
+                    ${getStepLabel(stepNum)}` }}
+                </div>
+            </div>
+        </div>
+
+        <span class="step-separator-vertical-pipe">|</span>
+
+        <!-- DYNAMIC 7-COLOR GEOMETRIC HORIZONTAL PROGRESS TIMELINE -->
+        <div class="geometric-timeline-row-container">
+            <div v-for="stepNum in 7" :key="stepNum" class="timeline-step-node-item" :class="{
+                'is-active-stage': currentStep === stepNum,
+                'is-accessible-stage': stepNum <= maxVisitedStep && currentStep !== stepNum,
+                'is-locked-stage': stepNum > maxVisitedStep
+            }" @click="selectCustomStep(stepNum)" :title="getStepLabel(stepNum)">
+                <!-- COLORFUL DOT SELECTION LOOP MATCHING PRESERVED CLASS NAMES -->
+                <span class="universal-status-dot" :class="[
+                    getStageColorClass(stepNum),
+                    { 'is-matt-disabled': stepNum > maxVisitedStep }
+                ]"></span>
+
+                <!-- INLINE ACTIVE TEXT BLOCK: Only visible for the current active step -->
+                <span v-if="currentStep === stepNum" class="timeline-active-label-text">
+                    {{ getStepLabel(stepNum) }}
+                </span>
+            </div>
+        </div>
+
+    </div>
+
+    <!--
+    COMMON SECTION ENDS
+    -->
+
+
+    <!--STEP 1 IDENTIFICATION STARTS-->
+
+    <div v-if="currentStep === WizardStep.IDENTIFICATION" class="vertical-stack-form shadow-clipping-safe-zone">
+
+        <!-- Phone Number Input Field Wrapper -->
+        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isPhoneValid() }">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path
+                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            <!-- CORES LOCK RULE: Keeps field uneditable once OTP check passes -->
+            <input type="tel" class="flat-raw-input" placeholder="Enter Phone Number..." v-model="authForm.phone"
+                maxlength="10" @input="authForm.phone = authForm.phone.replace(/\D/g, '')"
+                :disabled="isOtpSent || isOtpVerified" />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- Email Address Input Field Wrapper -->
+        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isEmailValid() }">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+            </svg>
+            <!-- CORES LOCK RULE: Keeps field uneditable once OTP check passes -->
+            <input type="email" class="flat-raw-input" placeholder="Enter Email Address..." v-model="authForm.email"
+                @input="authForm.email = authForm.email.trim().toLowerCase()" :disabled="isOtpSent || isOtpVerified" />
+        </div>
+
+        <!-- Validation Error Placement at Bottom -->
+        <div v-if="validationError" class="filter-vertical-row">
+            <span class="flat-error-descriptor-text">
+                {{ errorMessage }}
+            </span>
+        </div>
+
+        <!-- SUCCESS PLACEHOLDER BANNER: Appears in Area 1 when verification completes -->
+        <div v-if="isOtpSuccess" class="filter-vertical-row animation-fade-in-smooth"
+            style="margin-top: 12px; margin-bottom: 4px;">
+            <div class="flat-success-banner-card">
+                <svg class="success-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span class="flat-success-descriptor-text">
+                    OTP verified successfully!
+                </span>
+            </div>
+        </div>
+
+        <div v-else class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- Step 2 Dynamic Reveal: OTP Code Input Section -->
+
+        <!-- Verification OTP Input Section (Hides cleanly once verified) -->
+        <div v-if="isOtpSent && !isOtpVerified" class="otp-input-reveal-wrapper">
+            <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isOtpValid() }">
+                <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <input type="text" class="flat-raw-input" placeholder="Enter 6-Digit OTP..." v-model="authForm.otpCode"
+                    maxlength="6" @input="authForm.otpCode = authForm.otpCode.replace(/\D/g, '')" />
+            </div>
+        </div>
+
+        <div v-if="isOtpSent && !isOtpVerified" class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- ACTION TRIGGER ZONE: Entire button container collapses out of view when verified -->
+        <div v-if="!isOtpVerified" class="flat-btn-row-wrapper">
+            <button @click="isOtpSent ? confirmOtpVerification() : verifyAdvertiser()"
+                class="flat-full-width-action-btn" type="button">
+                <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span class="btn-text-label">
+                    {{ isOtpSent ? 'Verify OTP Code' : 'Identify Advertiser' }}
+                </span>
+            </button>
+        </div>
+
+    </div>
+    <!--STEP 1 IDENTIFICATION Ends-->
+
+
+    <!-- ========================================== -->
+    <!-- STEP 2: ADVERTISER PROFILE VIEWS           -->
+    <!-- ========================================== -->
+    <div v-if="currentStep === WizardStep.PROFILE" class="vertical-stack-form shadow-clipping-safe-zone">
+        <!--
+        <div class="universal-view-header-row" style="margin-bottom: 12px;">
+            <h3 style="font-size: 15px; font-weight: 600; color: #1e293b; margin: 0;">
+                {{ authenticatedAdvertiser?.advertiserId ? 'Update Profile Details' : 'Advertiser Profile Details' }}
+            </h3>
+        </div>
+        -->
+
+        <!-- 1. LOCKED VERIFIED PHONE NUMBER FIELD ON TOP -->
+        <div class="flat-form-field">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path
+                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            <input type="tel" class="flat-raw-input" v-model="authenticatedAdvertiser!.phone" disabled />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 2. LOCKED VERIFIED EMAIL ADDRESS FIELD -->
+        <div class="flat-form-field">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+            </svg>
+            <input type="email" class="flat-raw-input" v-model="authenticatedAdvertiser!.email" disabled />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 3. EDITABLE FULL NAME INPUT FIELD -->
+        <div class="flat-form-field" :class="{ 'is-invalid-field': validationError && !isNameValid() }">
+            <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+            </svg>
+            <input type="text" class="flat-raw-input" placeholder="Enter Full Name..."
+                v-model="authenticatedAdvertiser!.name" />
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 4. EDITABLE ADVERTISER TYPE RADIO SELECTION BLOCK -->
+        <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid() }">
+            <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
+                :class="{ 'is-active-node': option.value === authenticatedAdvertiser!.type }">
+                <input type="radio" name="advertiserTypeGroup" :value="option.value"
+                    v-model="authenticatedAdvertiser!.type"
+                    style="position: absolute; opacity: 0; width: 0; height: 0;" />
+                <span class="custom-radio-dot"></span>
+                <span class="label-caption-string">{{ option.label }}</span>
+            </label>
+        </div>
+
+        <!-- Local Validation Error Display block -->
+        <div v-if="validationError" class="filter-vertical-row" style="margin-top: 12px; margin-bottom: -4px;">
+            <span class="flat-error-descriptor-text">
+                {{ errorMessage }}
+            </span>
+        </div>
+
+        <div class="divider-line-container">
+            <span class="horizontal-hairline-divider"></span>
+        </div>
+
+        <!-- 5. SAVE PROFILE FOOTER ACTION BUTTON -->
+        <div class="flat-btn-row-wrapper">
+            <button @click="saveAdvertiserProfile" class="flat-full-width-action-btn" type="button">
+                <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                </svg>
+                <span class="btn-text-label">
+                    {{ authenticatedAdvertiser?.advertiserId ?
+                        'Update Profile Details' : 'SaveProfile Details' }}
+                </span>
+            </button>
+        </div>
+
+    </div>
+    <!-- STEP 2 PROFILE ENDS -->
+
+</template>
+
+<style scoped>
+/* Container framework alignment rules */
+.horizontal-steps-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    margin-bottom: 24px;
+}
+
+.step-custom-dropdown-container {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Custom layout trigger text label node */
+.custom-step-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    cursor: pointer;
+    user-select: none;
+    padding-right: 8px;
+}
+
+.active-count-num {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #0076df;
+}
+
+.custom-native-dropdown-arrow-svg {
+    width: 10px;
+    height: 10px;
+    transition: transform 0.2s ease;
+}
+
+.arrow-rotated {
+    transform: rotate(180deg);
+}
+
+/* FLOATING INDEPENDENT OVERLAY LIST BOX POPUP CONTAINER */
+.custom-dropdown-popover-box {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 290px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    z-index: 9999;
+}
+
+/* INDIVIDUAL CUSTOM ROW SELECTION ITEMS */
+.custom-popover-option-row {
+    padding: 8px 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+/* CUSTOM HIGHLIGHTING STATE COLORS (0% TICK MARKS) */
+.opt-custom-active {
+    color: #0076df !important;
+    font-weight: 600 !important;
+    background-color: transparent !important;
+    cursor: default;
+}
+
+.opt-custom-accessible {
+    color: #1e293b !important;
+    cursor: pointer;
+}
+
+.opt-custom-accessible:hover {
+    background-color: #f1f5f9;
+}
+
+.opt-custom-locked {
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.step-separator-vertical-pipe {
+    color: #cbd5e1;
+    font-size: 14px;
+    user-select: none;
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* =====================================================================
+   GEOMETRIC TIMELINE FLEX GRID TRACKING LAYOUT
+   ===================================================================== */
+.geometric-timeline-row-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+
+.timeline-step-node-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.is-active-stage {
+    cursor: default;
+}
+
+.is-accessible-stage {
+    cursor: pointer;
+}
+
+.is-locked-unvisited-stage {
+    cursor: not-allowed;
+}
+
+/* DYNAMIC PROGRESS MODIFIERS: Handles custom dimming for unvisited states */
+.universal-status-dot.disabled-orange-modifier {
+    opacity: 0.35 !important;
+    /* Elegant neomorphic disabled layout appearance */
+    transition: opacity 0.2s ease;
+}
+
+.is-accessible-stage:hover .universal-status-dot {
+    transform: scale(1.15);
+    /* Soft visual feedback on hover */
+}
+
+/* Active Text string display properties */
+.timeline-active-label-text {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    animation: slideExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideExpand {
+    from {
+        opacity: 0;
+        transform: translateX(-6px);
+        max-width: 0;
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+        max-width: 300px;
+    }
+}
+</style>
