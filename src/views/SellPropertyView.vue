@@ -2,23 +2,11 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import type { Advertiser } from '../models/advertisement';
 
-// 1. Import all decoupled child steps cleanly
 import Step1Auth from './sell/Step1Auth.vue';
 import Step2Profile from './sell/Step2Profile.vue';
-import Step3SelectAction from './sell/Step3SelectAction.vue'; // New Step 3 Import
+import Step3SelectAction from './sell/Step3SelectAction.vue';
+import Step4PropertyLocation from './sell/Step4PropertyLocation.vue';
 
-const getStageColorClass = (stepIndex: number): string => {
-    const colorMap: Record<number, string> = {
-        1: 'dot-brand-blue',
-        2: 'dot-brand-orange',
-        3: 'dot-brand-gold',
-        4: 'dot-brand-green',
-        5: 'dot-brand-purple',
-        6: 'dot-brand-teal',
-        7: 'dot-brand-red'
-    };
-    return colorMap[stepIndex] || 'dot-brand-blue';
-};
 
 enum WizardStep {
     IDENTIFICATION = 1,
@@ -35,7 +23,22 @@ const maxVisitedStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
 const validationError = ref(false);
 const authenticatedAdvertiser = ref<Advertiser | null>(null);
 
-// 2. NEW LIFECYCLE RECOVERY ENGINE: Restores layout tracking upon browser refreshes
+const isMapExpanded = ref(false);
+const dropdownElementRef = ref<HTMLElement | null>(null);
+
+const getStageColorClass = (stepIndex: number): string => {
+    const colorMap: Record<number, string> = {
+        1: 'dot-brand-blue',
+        2: 'dot-brand-orange',
+        3: 'dot-brand-gold',
+        4: 'dot-brand-green',
+        5: 'dot-brand-purple',
+        6: 'dot-brand-teal',
+        7: 'dot-brand-red'
+    };
+    return colorMap[stepIndex] || 'dot-brand-blue';
+};
+
 onMounted(() => {
     window.addEventListener('click', handleWindowOutsideClick);
 
@@ -44,33 +47,20 @@ onMounted(() => {
 
     if (savedAdvertiserCache) {
         authenticatedAdvertiser.value = JSON.parse(savedAdvertiserCache);
-
-        // Recover step history tracking dynamically from session state tokens
         if (savedMaxStepCache) {
             maxVisitedStep.value = parseInt(savedMaxStepCache, 10) as WizardStep;
             currentStep.value = parseInt(savedMaxStepCache, 10) as WizardStep;
         } else {
-            // Default safe recovery fallback to Step 2 if data exists but step index is uncommitted
             maxVisitedStep.value = WizardStep.PROFILE;
             currentStep.value = WizardStep.PROFILE;
         }
     }
 });
 
-// Programmatic cleanup trigger to clear out wizard data rows cleanly
 const triggerResetWizardSession = () => {
-    // 1. Evict structural tokens and session tracking states completely
-    sessionStorage.removeItem('authenticatedAdvertiser');
-    sessionStorage.removeItem('houseilla_max_visited_step');
-    sessionStorage.removeItem('houseilla_step1_inputs');
-    sessionStorage.removeItem('houseilla_ad_flow_mode');
-    sessionStorage.removeItem('houseilla_selected_ad_id');
-    sessionStorage.removeItem('houseilla_selected_ad_type');
-
-    // 2. Force the window to reload a completely fresh instance state context
+    sessionStorage.clear();
     window.location.reload();
 };
-
 
 onUnmounted(() => window.removeEventListener('click', handleWindowOutsideClick));
 
@@ -101,20 +91,22 @@ const handleProfileSuccess = (updatedAdvertiser: Advertiser) => {
     sessionStorage.setItem('houseilla_max_visited_step', WizardStep.ADD_ADVERTISEMENT.toString());
 };
 
-// 3. NEW ACTION INTERCEPTOR FOR STEP 3: Handles inventory selection pipelines
 const handleAdActionSelected = (payload: { mode: 'NEW' | 'EXISTING'; advertisementId: number | null; typeIndicator?: string }) => {
-    console.log('Wizard Action Context Captured:', payload);
-
-    // Defer form handling parameters down to memory/storage channels for Step 4 consumption
     sessionStorage.setItem('houseilla_ad_flow_mode', payload.mode);
     sessionStorage.setItem('houseilla_selected_ad_id', payload.advertisementId ? payload.advertisementId.toString() : '');
     sessionStorage.setItem('houseilla_selected_ad_type', payload.typeIndicator || '');
 
-    // Auto-advance timeline progress to Step 4 (Property Location)
     maxVisitedStep.value = WizardStep.PROPERTY_LOCATION;
     currentStep.value = WizardStep.PROPERTY_LOCATION;
     sessionStorage.setItem('houseilla_max_visited_step', WizardStep.PROPERTY_LOCATION.toString());
 };
+
+const handleLocationStepSuccess = () => {
+    maxVisitedStep.value = WizardStep.PROPERTY_TYPE_PURPOSE;
+    currentStep.value = WizardStep.PROPERTY_TYPE_PURPOSE;
+    sessionStorage.setItem('houseilla_max_visited_step', WizardStep.PROPERTY_TYPE_PURPOSE.toString());
+};
+
 
 const handleStepSync = (step: number) => {
     if (step > maxVisitedStep.value) {
@@ -122,9 +114,6 @@ const handleStepSync = (step: number) => {
         sessionStorage.setItem('houseilla_max_visited_step', step.toString());
     }
 };
-
-const isMapExpanded = ref(false);
-const dropdownElementRef = ref<HTMLElement | null>(null);
 
 const handleWindowOutsideClick = (event: MouseEvent) => {
     const targetNode = event.target as HTMLElement;
@@ -207,8 +196,6 @@ const selectCustomStep = (targetStepNumber: number) => {
     </div>
     <!-- COMMON SECTION ENDS -->
 
-
-
     <!-- STEP 1 IDENTIFICATION: Isolated Child Layer Module -->
     <Step1Auth v-if="currentStep === WizardStep.IDENTIFICATION" @auth-completed="handleAuthSuccess" />
 
@@ -220,8 +207,12 @@ const selectCustomStep = (targetStepNumber: number) => {
     <Step3SelectAction v-if="currentStep === WizardStep.ADD_ADVERTISEMENT" @action-selected="handleAdActionSelected"
         @sync-step-number="handleStepSync" />
 
+    <Step4PropertyLocation v-if="currentStep === WizardStep.PROPERTY_LOCATION" @sync-step-number="handleStepSync"
+        @location-completed="handleLocationStepSuccess" />
+
+
     <!-- Placeholder Workspace UI for Remaining Setup Steps (4 to 7) -->
-    <div v-if="currentStep >= 4" class="vertical-stack-form shadow-clipping-safe-zone"
+    <div v-if="currentStep >= 5" class="vertical-stack-form shadow-clipping-safe-zone"
         style="padding: 24px; background-color: #ffffff; text-align: center;">
         <h3 class="font-bold text-gray-800" style="font-size: 14px;">Step {{ currentStep }}: {{
             getStepLabel(currentStep) }} Panel Active</h3>

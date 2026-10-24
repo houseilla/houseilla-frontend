@@ -1,54 +1,105 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import type { Advertisement } from '../../models/advertisement';
+// 1. Target your exact enum token matching image 1
+import { AdvertisementPropertyType } from '../../models/enums';
 
 const emit = defineEmits<{
     (e: 'action-selected', payload: { mode: 'NEW' | 'EXISTING'; advertisementId: number | null; typeIndicator?: string }): void;
     (e: 'sync-step-number', step: number): void;
 }>();
 
-interface CompactAdSummary {
+interface CardDisplaySummary {
     id: number;
     title: string;
     price: number;
-    typeIndicator: 'FLAT' | 'HOUSE';
+    typeIndicator: 'FLAT' | 'HOUSE' | 'WAREHOUSE' | 'LAND' | 'OFFICE' | 'SHOP';
 }
 
 const isLoading = ref<boolean>(false);
-const existingAdvertisements = ref<CompactAdSummary[]>([]);
+const existingAdvertisements = ref<CardDisplaySummary[]>([]);
 
 onMounted(async () => {
     emit('sync-step-number', 3);
     await fetchAdvertiserInventory();
 });
 
+// 2. Clean numeric translator leveraging your exact structural parameters
+const translatePropertyTypeEnumToString = (typeEnum: AdvertisementPropertyType | number): string => {
+    switch (typeEnum) {
+        case AdvertisementPropertyType.FLAT: return 'Flat';
+        case AdvertisementPropertyType.HOUSE: return 'House';
+        case AdvertisementPropertyType.WAREHOUSE: return 'Warehouse';
+        case AdvertisementPropertyType.SHOP: return 'Shop';
+        case AdvertisementPropertyType.OFFICE: return 'Office';
+        case AdvertisementPropertyType.PRIVATE_LAND: return 'Land';
+        default: return 'Property';
+    }
+};
+
+const buildDescriptiveAdTitle = (ad: any): string => {
+    const typeText = ad.propertyType !== undefined ? translatePropertyTypeEnumToString(ad.propertyType) : 'Property';
+    const area = ad.areaName ? ad.areaName.trim() : '';
+    const cityDistrict = ad.district ? ad.district.trim() : '';
+
+    if (area && cityDistrict) {
+        return `${typeText} in ${area}, ${cityDistrict}`;
+    } else if (area || cityDistrict) {
+        return `${typeText} at ${area || cityDistrict}`;
+    }
+
+    return `${typeText} Asset Reference #${ad.advertisementId || ''}`;
+};
+
 const fetchAdvertiserInventory = async () => {
     isLoading.value = true;
     try {
-        // Simulated network latency matching your fallback REST pipeline logic
-        // Target Endpoint mapping: axios.get('/api/v1/advertisements')
-        await new Promise((resolve) => setTimeout(resolve, 600));
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-        existingAdvertisements.value = [
-            { id: 201, title: 'Luxury 3BHK Penthouse Estate', price: 8500000, typeIndicator: 'FLAT' },
-            { id: 202, title: 'Salt Lake Villa Complex', price: 18000000, typeIndicator: 'HOUSE' }
+        // 3. FIXED: Declared as 'any[]' temporarily for mock hydration to avoid strict object literal blocks
+        const rawBackendPayload: any[] = [
+            {
+                advertisementId: 201,
+                propertyType: AdvertisementPropertyType.FLAT,
+                areaName: 'South Kolkata',
+                district: 'Kolkata',
+                price: 6500000,
+                pincode: '700029',
+                status: 'ACTIVE',
+                advertiserId: 1
+            },
+            {
+                advertisementId: 202,
+                propertyType: AdvertisementPropertyType.HOUSE,
+                areaName: 'Salt Lake',
+                district: 'Kolkata',
+                price: 18000000,
+                pincode: '700091',
+                status: 'DRAFT',
+                advertiserId: 1
+            }
         ];
+
+        existingAdvertisements.value = rawBackendPayload.map((item) => ({
+            id: item.advertisementId,
+            title: buildDescriptiveAdTitle(item),
+            price: item.price,
+            // Clear 1:1 translation maps for UI component bindings
+            typeIndicator: item.propertyType === AdvertisementPropertyType.FLAT ? 'FLAT' : 'HOUSE'
+        }));
+
     } catch (error) {
-        console.error('Failed to query advertiser advertisement collection indices:', error);
+        console.error('Failed processing data elements:', error);
     } finally {
         isLoading.value = false;
     }
 };
 
-// Route user to fresh creation pipeline
 const initializeNewListingFlow = () => {
-    emit('action-selected', {
-        mode: 'NEW',
-        advertisementId: null
-    });
+    emit('action-selected', { mode: 'NEW', advertisementId: null });
 };
 
-// Route user to patch pipeline for a pre-existing record fetched from H2
-const initializeUpdateListingFlow = (ad: CompactAdSummary) => {
+const initializeUpdateListingFlow = (ad: CardDisplaySummary) => {
     emit('action-selected', {
         mode: 'EXISTING',
         advertisementId: ad.id,
@@ -56,6 +107,8 @@ const initializeUpdateListingFlow = (ad: CompactAdSummary) => {
     });
 };
 </script>
+
+
 <template>
     <div class="vertical-stack-form shadow-clipping-safe-zone">
         <!-- FIXED: Header elements bind to global var token attributes directly -->
