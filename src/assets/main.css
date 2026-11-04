@@ -61,9 +61,8 @@ body {
 .shadow-clipping-safe-zone {
   padding-bottom: 32px;
 }
-
 /* ==========================================================================
-   4. Unified Flat Forms Engine System (Textboxes & Dropdowns)
+   4. Unified Flat Forms Engine System (Textboxes, Dropdowns & Textareas)
    ========================================================================== */
 .flat-form-field {
   position: relative;
@@ -111,6 +110,54 @@ body {
   opacity: 0.35;
 }
 
+/* Shared Reusable Multi-line Description Block Injections */
+.flat-textarea-container {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  background-color: var(--bg-color);
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 16px 32px 16px;
+  transition: var(--transition-smooth);
+}
+
+[data-theme="dark"] .flat-textarea-container {
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.flat-textarea-container:focus-within {
+  border-color: var(--accent-color);
+}
+
+.flat-raw-textarea {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  height: 110px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.flat-raw-textarea::placeholder {
+  color: var(--text-color);
+  opacity: 0.35;
+}
+
+.textarea-character-counter {
+  position: absolute;
+  bottom: 10px;
+  right: 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-color);
+  opacity: 0.4;
+  user-select: none;
+}
 /* ==========================================================================
    5. Flat Binary Selection Components (Radio Buttons & Checkboxes)
    ========================================================================== */
@@ -168,11 +215,11 @@ body {
   background-color: var(--accent-color);
 }
 
-/* 5.2 REUSABLE COMPONENT: Clean Minimal Flat Checkbox Vector Square */
+/* 5.2 Clean Minimal Flat Checkbox Vector Square */
 .custom-checkbox-square {
   width: 14px;
   height: 14px;
-  border-radius: 4px; /* Sleek square radius contrast */
+  border-radius: 4px; 
   border: 1.5px solid rgba(0, 0, 0, 0.25);
   display: inline-block;
   position: relative;
@@ -190,7 +237,6 @@ body {
   background-color: var(--accent-color);
 }
 
-/* Custom minimal CSS vector white check indicator mark */
 .flat-radio-label-node.is-active-node 
 .custom-checkbox-square::after {
   content: '';
@@ -270,9 +316,7 @@ body {
   filter: grayscale(0.2); 
 }
 
-/* ==========================================================================
-   Universal Page Layout System (Shared Across All 5 Main Area Views)
-   ========================================================================== */
+/* Universal Page Layout System (Shared Across All 5 Main Area Views) */
 .universal-view-header-row {
   display: flex;
   align-items: center;
@@ -305,7 +349,7 @@ body {
 
 .universal-back-arrow-btn:hover {
   opacity: 0.9;
-  transform: translateX(-2px); /* Seamless interactive micro-slide hint */
+  transform: translateX(-2px); 
 }
 
 .universal-back-arrow-btn:active {
@@ -348,19 +392,12 @@ body {
   color: var(--text-color);
 }
 
-/* ==========================================================================
-   SHARED CORE VERTICAL WORKSPACE LAYOUT ENGINE (REUSABLE)
-   ========================================================================== */
-
+/* SHARED CORE VERTICAL WORKSPACE LAYOUT ENGINE */
 .vertical-stack-form {
   display: flex !important;
   flex-direction: column;
   gap: 18px;
   width: 100%;
-}
-
-.shadow-clipping-safe-zone {
-  padding-bottom: 32px;
 }
 
 .filter-vertical-row {
@@ -385,11 +422,6 @@ body {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
-/* GLOBAL DARK MODE SUPPORT FOR DIVIDERS */
-[data-theme="dark"] .horizontal-hairline-divider {
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
 /* SHARED ANIMATION PRIMITIVES */
 .animate-fade-in {
   animation: globalSubcardFadeIn 0.3s ease-out forwards;
@@ -399,10 +431,8 @@ body {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-/* ==========================================================================
-   SHARED FORM INTERACTIVE CHIPS & SELECTION MECHANICS
-   ========================================================================== */
 
+/* INTERACTIVE CHIPS & SELECTION MECHANICS */
 .remove-bottom-gap {
   margin-bottom: -4px;
 }
@@ -444,18 +474,13 @@ body {
   40%, 80% { transform: translateX(4px); }
 }
 
-/* ==========================================================================
-   GLOBAL FORM VALIDATION HIGHLIGHTERS (REUSABLE)
-   ========================================================================== */
-
-/* 1. TEXT FIELDS: Soft inset highlight for standard inputs (SellProperty field) */
+/* GLOBAL FORM VALIDATION HIGHLIGHTERS */
 div.flat-form-field.is-invalid-field {
   border: 1.5px solid #ff3333 !important;
   box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1), 
               2px 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* 2. CHIPS & BUTTONS: Wraps just the radio/checkbox node content instead of the whole row line */
 .borderless-flat-radio-row.is-invalid-field 
 .flat-radio-label-node {
   border: 1.5px solid #ff3333 !important;
@@ -464,7 +489,13 @@ div.flat-form-field.is-invalid-field {
   transition: border-color 0.2s ease;
 }
 
-/* Red Text Descriptive Error Nodes Matching Buy & Sell Alignment */
+/* Dynamic Multi-line textarea container highlight */
+div.flat-textarea-container.is-invalid-textarea {
+  border: 1.5px solid #ff3333 !important;
+  box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1), 
+              2px 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
 .flat-error-descriptor-text {
   color: #ff3333;
   font-size: 13.5px;
@@ -473,9 +504,7 @@ div.flat-form-field.is-invalid-field {
   letter-spacing: 0.1px;
 }
 
-/* =====================================================================
-   8. SHARED PLATFORM NEOMORPHIC INFRASTRUCTURE: DOT INDICATORS
-   ===================================================================== */
+/* SHARED PLATFORM NEOMORPHIC INFRASTRUCTURE: DOT INDICATORS */
 .universal-status-dot {
   width: 10px;
   height: 10px;
@@ -485,7 +514,6 @@ div.flat-form-field.is-invalid-field {
   transition: background-color var(--transition-smooth);
 }
 
-/* Global Shared Color Tokens matching your exact brand parameters */
 .dot-brand-blue   { background-color: #0076df; }
 .dot-brand-orange { background-color: #ff7b00; }
 .dot-brand-gold   { background-color: #ffd71a; }
@@ -493,20 +521,10 @@ div.flat-form-field.is-invalid-field {
 .dot-brand-purple { background-color: #9b59b6; }
 .dot-brand-teal   { background-color: #1abc9c; }
 .dot-brand-red    { background-color: #e74c3c; }
-
-/* Inactive / Progress step muted utility states */
 .dot-brand-muted  { background-color: #cbd5e1 !important; }
 .text-brand-muted { color: #94a3b8 !important; }
   
-/* Dynamic layout modifier delivering that flat, beautiful matte appearance for unvisited stages */
 .universal-status-dot.is-matt-disabled {
-  opacity: 0.28 !important;   /* Elegant dimming parameter drop */
-  filter: saturate(0.4) contrast(0.95); /* Transforms color structure into a flat matte look */
+  opacity: 0.28 !important;   
+  filter: saturate(0.4) contrast(0.95); 
 }
-
-/*
-* {
-  outline: 1px solid red !important;
-}
-  */
-  

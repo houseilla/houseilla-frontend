@@ -6,7 +6,7 @@ import {
     AdvertisementPurpose,
     AdvertisementPurposeLabels,
     getPropertyTypeLabel
-} from '../models/enums';
+} from '../models/advertisementEnums';
 import type { Advertisement } from '../models/advertisement';
 
 // Core Emits and Declarations

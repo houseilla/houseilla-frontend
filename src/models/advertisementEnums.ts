@@ -69,3 +69,20 @@ export enum AdvertiserContractual {
   FREE = 0,
   PREMIUM = 1
 }
+
+// 🌟 6. ADDED: Advertisement Status (Fixes the ts(2305) compilation error!)
+export enum AdvertisementStatus {
+  DRAFT = 0,
+  ACTIVE = 1,
+  ARCHIVED = 2
+}
+
+export const AdvertisementStatusLabels: Record<AdvertisementStatus, string> = {
+  [AdvertisementStatus.DRAFT]: 'Draft',
+  [AdvertisementStatus.ACTIVE]: 'Active',
+  [AdvertisementStatus.ARCHIVED]: 'Archived'
+};
+
+export function getAdvertisementStatusLabel(value: number): string {
+  return AdvertisementStatusLabels[value as AdvertisementStatus] || 'UNKNOWN';
+}

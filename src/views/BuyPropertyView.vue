@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { AdvertisementPropertyType } from '../models/enums';
+import { AdvertisementPropertyType } from '../models/advertisementEnums';
 import type { Advertisement } from '../models/advertisement';
 
 // 1. IMPORT YOUR MOCKUP DATABASE FILE HERE

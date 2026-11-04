@@ -1,124 +1,105 @@
+import { AdvertisementPropertyType, AdvertisementPurpose, AdvertisementStatus } from './advertisementEnums';
+
 export interface Advertiser {
-  advertiserId: number;
+  id: number;              
   name: string;
   phone: string;
   email: string;
   address: string;
   location: string;
-  type: number;
-  contractual: number;
+  advertiserType: number;   
+  contractualStatus: number; 
 }
 
+// 🌟 1. DECOUPLED MEDIA SCHEMA DRIVEN BY SCALAR FOREIGN KEY
 export interface AdvertisementImage {
-  fileId: number;
-  advertisementId: number;
-  name: string;
-  type: string;
-  file?: string; // Stored as Base64 string from backend payload channel
-  base64Data?: string; // Calculated browser-readable preview template anchor
+  id?: number;
+  advertisementId: number; // Linked unidirectionally to parent advertisement
+  filePayload: string;     // Transmitted/Received as raw binary string or Base64
+  base64Data?: string;     // Transient field for local browser preview hydration
 }
 
-// 🌟 1. POLYMORPHIC CHILD DETAIL SUBSCHEMAS MATCHING SPRING BOOT SUBCLASSES
-export interface FlatDetails {
-  typeIndicator: 'flat';
-  detailId?: number;
-  isRent: number;
-  isCommunity: number;
-  buildingRising: number;
+// 🌟 2. INDEPENDENT PHYSICAL SPECIFICATION SUB-TYPES (NO NESTING/INHERITANCE)
+export interface FlatDetail {
+  id: number;
+  advertisementId: number; // Programmatic 1:1 link to advertisements table
+  isRent: boolean;
+  isCommunity: boolean;
+  buildingRising: string;
   floorNumber: number;
-  carpetArea: string;
-  flatType: number;
-  liftAvailable: number;
+  carpetArea: number;
+  flatType: string;
+  liftAvailable: boolean;
   parkings: number;
-  possessionBy: string;
+  possessionBy: string;   // ISO Date format string (YYYY-MM-DD)
   propertyAge: number;
   amenities: string;
 }
 
-export interface LandDetails {
-  typeIndicator: 'land';
-  detailId?: number;
-  type: number; // 1 = Private Land, 2 = Commercial Land
-  area: number;
+export interface LandDetail {
+  id: number;
+  advertisementId: number; // Unique constraint enforced programmatic link
+  landArea: number;        // Standardized name matching refactored backend field
   description: string;
 }
 
-export interface HouseDetails {
-  typeIndicator: 'house';
-  detailId?: number;
-  landArea: string;
-  carpetArea: string;
+export interface HouseDetail {
+  id: number;
+  advertisementId: number;
+  landArea: number;
+  carpetArea: number;
   floors: number;
   parkings: number;
   noOfParking: number;
-  roadFacing: number;
+  roadFacing: string;
   roadWidth: number;
 }
 
-export interface OfficeDetails {
-  typeIndicator: 'office';
-  detailId?: number;
-  floorNo: string;
-  area: string;
-  furnishedType: number;
-}
-
-export interface ShopDetails {
-  typeIndicator: 'shop';
-  detailId?: number;
-  floorNo: string;
-  area: string;
-}
-
-export interface WarehouseDetails {
-  typeIndicator: 'warehouse';
-  detailId?: number;
-  area: string;
-}
-
-// 🌟 2. UNIFIED UNION TYPE FOR WIZARD CONTEXT ROUTING
-export type PropertyDetail = 
-  | FlatDetails 
-  | LandDetails 
-  | HouseDetails 
-  | OfficeDetails 
-  | ShopDetails 
-  | WarehouseDetails;
-
-// 🌟 3. SYNCHRONIZED PARENT LISTING SCHEMA STRUCTURAL CONTRACT
-export interface Advertisement {
+export interface OfficeDetail {
+  id: number;
   advertisementId: number;
-  advertiserId: number;
-  
-  // Flattened Advertiser metadata within Advertisement record context
-  advertiserName: string;
-  isPremium: number; // Maps to private int isPremium in backend
-  advertiserType: string;
-  advertiserPhone: string;
-  advertiserEmail: string;
+  floorNo: number;
+  area: number;
+  furnishedType: string;
+}
 
-  // Address Details
-  propertyNumber: string;
-  areaName: string;
-  addressLine1: string;
-  addressLine2: string;
-  district: string;
-  pincode: string;
+export interface ShopDetail {
+  id: number;
+  advertisementId: number;
+  floorNo: number;
+  area: number;
+}
 
-  // Geolocation Matrix
-  latitude: number;
-  longitude: number;
+export interface WarehouseDetail {
+  id: number;
+  advertisementId: number;
+  area: number;
+}
 
-  // Categorization & Metadata (Aligned to primitive int payloads)
-  category: number;     // 1 = Private, 2 = Commercial
-  propertyType: number; // Sub-type indicator index integer
-  purpose: number;
+// 🌟 3. LEAN CENTER TRANSACTIONAL listing SCHEMA CONTRACT
+export interface Advertisement {
+  id: number; // Changed from advertisementId to match backend entity 'id'
+  advertiserId: number; // Scalar structural reference key tracking Step 1 profile
+
+  // Enums configuration mapped precisely to backend ORDINAL variables
+  propertyType: AdvertisementPropertyType; 
+  purpose: AdvertisementPurpose;
+  listingStatus: AdvertisementStatus; // Tracks DRAFT / ACTIVE states seamlessly
+
+  // Financial and Geospatial metrics mapped to matching precision numbers
   price: number;
   description: string;
-  updateDate: string; // ISO Timestamp string representation
-  createDate: string; // ISO Timestamp string representation
+  propertyNumber?: string;
+  areaName: string;
+  addressLine1: string;
+  addressLine2?: string;
+  district?: string;
+  pincode?: string;
+  latitude?: number;
+  longitude?: number;
+  isPremium: number; // 0 = Standard, 1 = Premium Feature Listing
 
-  // 🌟 THE MISSING LINKS INJECTED CLEANLY
-  propertyDetail: PropertyDetail; 
-  images?: AdvertisementImage[];
+  // Audit Logs Timestamps
+  updateDate?: string; 
+  createDate?: string; 
 }

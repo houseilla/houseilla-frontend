@@ -2,9 +2,8 @@
 import { computed, ref, onMounted } from 'vue';
 import { advertiserService } from '../../services/advertiserService';
 import type { Advertiser } from '../../models/advertisement';
-import { AdvertiserType, AdvertiserTypeLabels, getAdvertiserTypeLabel } from '../../models/enums';
+import { AdvertiserType, getAdvertiserTypeLabel } from '../../models/advertisementEnums';
 
-// 1. Establish the explicit props and emit interface channels matching our layout framework contract
 const props = defineProps<{
     advertiserData: Advertiser | null;
 }>();
@@ -13,37 +12,45 @@ const emit = defineEmits<{
     (e: 'profile-completed', updatedAdvertiser: Advertiser): void;
 }>();
 
-// Local active working state references
-const localAdvertiser = ref<Advertiser>({
-    advertiserId: 0,
+// Local active working state references - matches lean backend names
+const localAdvertiser = ref({
+    id: 0,
     name: '',
     phone: '',
     email: '',
     address: '',
     location: 'Kolkata',
-    type: AdvertiserType.INDIVIDUAL,
-    contractual: 0
+    advertiserType: AdvertiserType.INDIVIDUAL,
+    contractualStatus: 0
 });
 
 const validationError = ref<boolean>(false);
 const errorMessage = ref<string>('');
 
-// Sync incoming database object values down to our isolated local memory clone on boot
+// Sync incoming database object values down to local state on component boot
 onMounted(() => {
     if (props.advertiserData) {
+        const d = props.advertiserData as any;
         localAdvertiser.value = {
-            ...props.advertiserData,
-            // Default to Kolkata matching our location constraints if none is configured
-            location: props.advertiserData.location || 'Kolkata'
+            // CRITICAL FIX: Safe tracking evaluation checking both standard and auth-token properties
+            id: d.id || d.advertiserId || 0,
+            name: d.name || '',
+            phone: d.phone || '',
+            email: d.email || '',
+            address: d.address || '',
+            location: d.location || 'Kolkata',
+            advertiserType: d.advertiserType ?? AdvertiserType.INDIVIDUAL,
+            contractualStatus: d.contractualStatus || 0
         };
+        console.log('[Step 2 Hydration Success] Active profile key loaded: ', localAdvertiser.value.id);
     }
 });
 
-// Structural validator computational rules
+// Validation computed properties
 const isNameValid = computed(() => localAdvertiser.value.name.trim().length > 0);
-const isTypeValid = computed(() => localAdvertiser.value.type !== undefined && localAdvertiser.value.type !== null);
+const isTypeValid = computed(() => localAdvertiser.value.advertiserType !== undefined && localAdvertiser.value.advertiserType !== null);
 
-// Generate list keys safely mapping through our numeric enum wrappers (0, 1, 2)
+// Safely map radio selection elements through our numeric enums
 const advertiserTypeOptions = computed(() => {
     return [AdvertiserType.BROKER, AdvertiserType.BUILDER, AdvertiserType.INDIVIDUAL].map((enumValue) => ({
         value: enumValue,
@@ -51,7 +58,7 @@ const advertiserTypeOptions = computed(() => {
     }));
 });
 
-// Dispatch the compiled model updates safely to our JPA persistence hook layer
+// Dispatch the compiled model updates safely to our backend
 const handleSaveProfile = async () => {
     validationError.value = false;
     errorMessage.value = '';
@@ -69,27 +76,44 @@ const handleSaveProfile = async () => {
     }
 
     try {
-        const response = await advertiserService.saveAdvertiserProfile(localAdvertiser.value);
+        // Compile the payload matching the Advertiser model strictly using number values
+        const payload: Advertiser = {
+            // CRITICAL FIX: Retains true persistent identity key instead of dropping to 0
+            id: localAdvertiser.value.id || (props.advertiserData as any)?.advertiserId || 0,
+            name: localAdvertiser.value.name,
+            phone: localAdvertiser.value.phone,
+            email: localAdvertiser.value.email,
+            address: localAdvertiser.value.address,
+            location: localAdvertiser.value.location,
+            advertiserType: localAdvertiser.value.advertiserType,
+            contractualStatus: localAdvertiser.value.contractualStatus
+        };
 
-        if (response.success && response.advertiser) {
-            console.log('Profile processed and saved down to database successfully!', response.advertiser);
-            // Emit the pristine database-committed entity snapshot back to our shell context frame
-            emit('profile-completed', response.advertiser);
-        } else {
-            validationError.value = true;
-            errorMessage.value = response.message || 'Failed to submit profile updates. Please try again.';
+        console.log('[Outbound Advertiser Save Payload]: ', payload);
+
+        const data = await advertiserService.saveAdvertiserProfile(payload);
+
+        if (data) {
+            console.log('Profile processed and verified successfully!', data);
+            emit('profile-completed', data);
         }
-    } catch (error) {
+    } catch (error: any) {
         validationError.value = true;
-        errorMessage.value = 'Failed communicating with backend security layers.';
+
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            errorMessage.value = 'Session expired or unauthorized. Please re-verify your OTP.';
+        } else {
+            errorMessage.value = error.response?.data?.message || 'Failed communicating with backend security layers.';
+        }
         console.error('API profile transaction faulted:', error);
     }
 };
 </script>
+
 <template>
     <div class="vertical-stack-form shadow-clipping-safe-zone">
 
-        <!-- 1. LOCKED VERIFIED PHONE NUMBER FIELD ON TOP -->
+        <!-- 1. LOCKED VERIFIED PHONE NUMBER FIELD -->
         <div class="flat-form-field">
             <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path
@@ -131,8 +155,9 @@ const handleSaveProfile = async () => {
         <!-- 4. EDITABLE ADVERTISER TYPE RADIO SELECTION BLOCK -->
         <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid }">
             <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
-                :class="{ 'is-active-node': option.value === localAdvertiser.type }">
-                <input type="radio" name="advertiserTypeGroup" :value="option.value" v-model="localAdvertiser.type"
+                :class="{ 'is-active-node': option.value === localAdvertiser.advertiserType }">
+                <input type="radio" name="advertiserTypeGroup" :value="option.value"
+                    v-model="localAdvertiser.advertiserType"
                     style="position: absolute; opacity: 0; width: 0; height: 0;" />
                 <span class="custom-radio-dot"></span>
                 <span class="label-caption-string">{{ option.label }}</span>
@@ -141,9 +166,7 @@ const handleSaveProfile = async () => {
 
         <!-- Local Validation Error Display Block -->
         <div v-if="validationError" class="filter-vertical-row" style="margin-top: 12px; margin-bottom: -4px;">
-            <span class="flat-error-descriptor-text">
-                {{ errorMessage }}
-            </span>
+            <span class="flat-error-descriptor-text">{{ errorMessage }}</span>
         </div>
 
         <div class="divider-line-container">
@@ -153,16 +176,11 @@ const handleSaveProfile = async () => {
         <!-- 5. SAVE PROFILE FOOTER ACTION BUTTON -->
         <div class="flat-btn-row-wrapper">
             <button @click="handleSaveProfile" class="flat-full-width-action-btn" type="button">
-                <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                </svg>
                 <span class="btn-text-label">
-                    {{ localAdvertiser.advertiserId ? 'Update Profile Details' : 'Save Profile Details' }}
+                    {{ localAdvertiser.id ? 'Update Profile Details' : 'Save Profile Details' }}
                 </span>
             </button>
         </div>
 
     </div>
 </template>
-<style scoped></style>

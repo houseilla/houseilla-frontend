@@ -1,118 +1,115 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import type { Advertiser } from '../models/advertisement';
-
+import type { Advertisement, Advertiser } from '../models/advertisement';
+import { SessionKey, WizardStep, WIZARD_STEP_LIST } from '../models/sellWizardEnums.ts';
 import Step1Auth from './sell/Step1Auth.vue';
 import Step2Profile from './sell/Step2Profile.vue';
 import Step3SelectAction from './sell/Step3SelectAction.vue';
 import Step4PropertyLocation from './sell/Step4PropertyLocation.vue';
+import Step5PropertyTypePurpose from './sell/Step5PropertyTypePurpose.vue';
 
+// --- Single Source of Truth Wizard Progression Trackers ---
+const currentStep = ref<WizardStep>(
+    Number(sessionStorage.getItem(SessionKey.CURRENT_STEP)) || WizardStep.IDENTIFICATION
+);
 
-enum WizardStep {
-    IDENTIFICATION = 1,
-    PROFILE = 2,
-    ADD_ADVERTISEMENT = 3,
-    PROPERTY_LOCATION = 4,
-    PROPERTY_TYPE_PURPOSE = 5,
-    PROPERTY_DETAILS = 6,
-    PHOTOS_MEDIA = 7
-}
+const maxStepUnlocked = ref<WizardStep>(
+    Number(sessionStorage.getItem(SessionKey.MAX_STEP)) || WizardStep.IDENTIFICATION
+);
 
-const currentStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
-const maxVisitedStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
-const validationError = ref(false);
 const authenticatedAdvertiser = ref<Advertiser | null>(null);
+const advertisementOperation = ref<'NEW' | 'EXISTING' | null>(
+    (sessionStorage.getItem(SessionKey.ADVERTISEMENT_OPERATION) as 'NEW' | 'EXISTING') || null
+);
 
-const isMapExpanded = ref(false);
+const isMapExpanded = ref<boolean>(false);
 const dropdownElementRef = ref<HTMLElement | null>(null);
 
-const getStageColorClass = (stepIndex: number): string => {
-    const colorMap: Record<number, string> = {
-        1: 'dot-brand-blue',
-        2: 'dot-brand-orange',
-        3: 'dot-brand-gold',
-        4: 'dot-brand-green',
-        5: 'dot-brand-purple',
-        6: 'dot-brand-teal',
-        7: 'dot-brand-red'
-    };
-    return colorMap[stepIndex] || 'dot-brand-blue';
+// --- Core Event Dispatches & Routing Handlers ---
+const handleAuthSuccess = (payload: { otpVerified: boolean; token: string; advertiser: Advertiser }) => {
+    sessionStorage.setItem(SessionKey.OTP_VERIFIED, String(payload.otpVerified));
+    sessionStorage.setItem(SessionKey.AUTH_TOKEN, payload.token);
+    sessionStorage.setItem(SessionKey.ADVERTISER, JSON.stringify(payload.advertiser));
+
+    authenticatedAdvertiser.value = payload.advertiser;
+    currentStep.value = WizardStep.PROFILE;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROFILE));
+
+    if (maxStepUnlocked.value < WizardStep.PROFILE) {
+        maxStepUnlocked.value = WizardStep.PROFILE;
+        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROFILE));
+    }
 };
 
-onMounted(() => {
-    window.addEventListener('click', handleWindowOutsideClick);
+const handleProfileSuccess = (updatedAdvertiser: Advertiser) => {
+    sessionStorage.setItem(SessionKey.ADVERTISER, JSON.stringify(updatedAdvertiser));
+    authenticatedAdvertiser.value = updatedAdvertiser;
 
-    const savedAdvertiserCache = sessionStorage.getItem('authenticatedAdvertiser');
-    const savedMaxStepCache = sessionStorage.getItem('houseilla_max_visited_step');
+    currentStep.value = WizardStep.SELECT_ACTION;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.SELECT_ACTION));
 
-    if (savedAdvertiserCache) {
-        authenticatedAdvertiser.value = JSON.parse(savedAdvertiserCache);
-        if (savedMaxStepCache) {
-            maxVisitedStep.value = parseInt(savedMaxStepCache, 10) as WizardStep;
-            currentStep.value = parseInt(savedMaxStepCache, 10) as WizardStep;
-        } else {
-            maxVisitedStep.value = WizardStep.PROFILE;
-            currentStep.value = WizardStep.PROFILE;
-        }
+    if (maxStepUnlocked.value < WizardStep.SELECT_ACTION) {
+        maxStepUnlocked.value = WizardStep.SELECT_ACTION;
+        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.SELECT_ACTION));
     }
-});
+};
+
+const handleActionSelected = (payload: { mode: 'NEW' | 'EXISTING'; advertisementId: number | null }) => {
+    advertisementOperation.value = payload.mode;
+    sessionStorage.setItem(SessionKey.ADVERTISEMENT_OPERATION, payload.mode);
+
+    currentStep.value = WizardStep.PROPERTY_LOCATION;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROPERTY_LOCATION));
+
+    if (maxStepUnlocked.value < WizardStep.PROPERTY_LOCATION) {
+        maxStepUnlocked.value = WizardStep.PROPERTY_LOCATION;
+        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROPERTY_LOCATION));
+    }
+};
+
+
+const handleLocationSuccess = (completedAdvertisement: Advertisement) => {
+    // 1. Commit the expanded location details directly to session storage
+    sessionStorage.setItem(SessionKey.ADVERTISEMENT, JSON.stringify(completedAdvertisement));
+
+    // 2. Route the user onward cleanly to Step 5 (PROPERTY_TYPE_PURPOSE)
+    currentStep.value = WizardStep.PROPERTY_TYPE_PURPOSE;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROPERTY_TYPE_PURPOSE));
+
+    if (maxStepUnlocked.value < WizardStep.PROPERTY_TYPE_PURPOSE) {
+        maxStepUnlocked.value = WizardStep.PROPERTY_TYPE_PURPOSE;
+        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROPERTY_TYPE_PURPOSE));
+    }
+
+    console.log('%c[SellProperty Parent] Step 4 complete. Location added, advanced to Step 5.', 'color: #2ecc71; font-weight: bold;');
+};
+
+const handleTypePurposeSuccess = (completedPayload: any) => {
+    // 1. Commit the expanded dataset parameters directly into Session Storage
+    sessionStorage.setItem(SessionKey.ADVERTISEMENT, JSON.stringify(completedPayload));
+
+    // 2. Advance active view tracker directly to the next level index
+    currentStep.value = WizardStep.PROPERTY_DETAILS;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROPERTY_DETAILS));
+
+    if (maxStepUnlocked.value < WizardStep.PROPERTY_DETAILS) {
+        maxStepUnlocked.value = WizardStep.PROPERTY_DETAILS;
+        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROPERTY_DETAILS));
+    }
+    console.log('%c[SellProperty Parent] Step 5 complete. Data saved, advanced to Step 6.', 'color: #2ecc71; font-weight: bold;');
+};
+
+const selectCustomStep = (targetStepId: WizardStep) => {
+    if (targetStepId <= maxStepUnlocked.value) {
+        currentStep.value = targetStepId;
+        sessionStorage.setItem(SessionKey.CURRENT_STEP, String(targetStepId));
+        isMapExpanded.value = false;
+    }
+};
 
 const triggerResetWizardSession = () => {
     sessionStorage.clear();
     window.location.reload();
-};
-
-onUnmounted(() => window.removeEventListener('click', handleWindowOutsideClick));
-
-const getStepLabel = (stepIndex: number): string => {
-    const stepsMap: Record<number, string> = {
-        1: 'Advertiser Identification',
-        2: 'Advertiser Profile',
-        3: 'Add/Update Advertisements',
-        4: 'Property Location',
-        5: 'Property Type & Purpose',
-        6: 'Property Details',
-        7: 'Photos & Media'
-    };
-    return stepsMap[stepIndex] || 'Unknown Step';
-};
-
-const handleAuthSuccess = (payload: { advertiser: any; nextStep: number }) => {
-    authenticatedAdvertiser.value = payload.advertiser;
-    maxVisitedStep.value = payload.nextStep as WizardStep;
-    currentStep.value = payload.nextStep as WizardStep;
-    sessionStorage.setItem('houseilla_max_visited_step', payload.nextStep.toString());
-};
-
-const handleProfileSuccess = (updatedAdvertiser: Advertiser) => {
-    authenticatedAdvertiser.value = updatedAdvertiser;
-    maxVisitedStep.value = WizardStep.ADD_ADVERTISEMENT;
-    currentStep.value = WizardStep.ADD_ADVERTISEMENT;
-    sessionStorage.setItem('houseilla_max_visited_step', WizardStep.ADD_ADVERTISEMENT.toString());
-};
-
-const handleAdActionSelected = (payload: { mode: 'NEW' | 'EXISTING'; advertisementId: number | null; typeIndicator?: string }) => {
-    sessionStorage.setItem('houseilla_ad_flow_mode', payload.mode);
-    sessionStorage.setItem('houseilla_selected_ad_id', payload.advertisementId ? payload.advertisementId.toString() : '');
-    sessionStorage.setItem('houseilla_selected_ad_type', payload.typeIndicator || '');
-
-    maxVisitedStep.value = WizardStep.PROPERTY_LOCATION;
-    currentStep.value = WizardStep.PROPERTY_LOCATION;
-    sessionStorage.setItem('houseilla_max_visited_step', WizardStep.PROPERTY_LOCATION.toString());
-};
-
-const handleLocationStepSuccess = () => {
-    maxVisitedStep.value = WizardStep.PROPERTY_TYPE_PURPOSE;
-    currentStep.value = WizardStep.PROPERTY_TYPE_PURPOSE;
-    sessionStorage.setItem('houseilla_max_visited_step', WizardStep.PROPERTY_TYPE_PURPOSE.toString());
-};
-
-
-const handleStepSync = (step: number) => {
-    if (step > maxVisitedStep.value) {
-        maxVisitedStep.value = step as WizardStep;
-        sessionStorage.setItem('houseilla_max_visited_step', step.toString());
-    }
 };
 
 const handleWindowOutsideClick = (event: MouseEvent) => {
@@ -122,18 +119,35 @@ const handleWindowOutsideClick = (event: MouseEvent) => {
     }
 };
 
-const selectCustomStep = (targetStepNumber: number) => {
-    const targetStep = targetStepNumber as WizardStep;
-    if (targetStep <= maxVisitedStep.value) {
-        currentStep.value = targetStep;
-        isMapExpanded.value = false;
-        validationError.value = false;
+// --- Lifecycle State Recovery Hydration Engine ---
+onMounted(() => {
+    window.addEventListener('click', handleWindowOutsideClick);
+
+    const savedAdvertiser = sessionStorage.getItem(SessionKey.ADVERTISER);
+    const savedCurrentStep = sessionStorage.getItem(SessionKey.CURRENT_STEP);
+    const savedMaxStep = sessionStorage.getItem(SessionKey.MAX_STEP);
+
+    if (savedAdvertiser) {
+        authenticatedAdvertiser.value = JSON.parse(savedAdvertiser);
     }
-};
+    if (savedCurrentStep) {
+        currentStep.value = parseInt(savedCurrentStep, 10) as WizardStep;
+    }
+    if (savedMaxStep) {
+        maxStepUnlocked.value = parseInt(savedMaxStep, 10) as WizardStep;
+    } else if (savedCurrentStep) {
+        maxStepUnlocked.value = parseInt(savedCurrentStep, 10) as WizardStep;
+        sessionStorage.setItem(SessionKey.MAX_STEP, savedCurrentStep);
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('click', handleWindowOutsideClick);
+});
 </script>
 
 <template>
-    <!-- COMMON SECTION Starts -->
+    <!-- COMMON NAVIGATION CONTROL ROW STARTS -->
     <div class="horizontal-steps-nav" style="justify-content: space-between;">
 
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -150,13 +164,12 @@ const selectCustomStep = (targetStepNumber: number) => {
 
                 <!-- CUSTOM POPUP MENU -->
                 <div v-if="isMapExpanded" class="custom-dropdown-popover-box" @click.stop>
-                    <div v-for="stepNum in 7" :key="stepNum" class="custom-popover-option-row" :class="{
-                        'opt-custom-active': currentStep === stepNum,
-                        'opt-custom-accessible': stepNum <= maxVisitedStep && currentStep !== stepNum,
-                        'opt-custom-locked': stepNum > maxVisitedStep
-                    }" @click="selectCustomStep(stepNum)">
-                        {{ currentStep === stepNum ? `Step ${stepNum} of 7` : `Step ${stepNum} of 7:
-                        ${getStepLabel(stepNum)}` }}
+                    <div v-for="step in WIZARD_STEP_LIST" :key="step.id" class="custom-popover-option-row" :class="{
+                        'opt-custom-active': currentStep === step.id,
+                        'opt-custom-accessible': step.id <= maxStepUnlocked && currentStep !== step.id,
+                        'opt-custom-locked': step.id > maxStepUnlocked
+                    }" @click="selectCustomStep(step.id)">
+                        {{ currentStep === step.id ? `Step ${step.id} of 7` : `Step ${step.id} of 7: ${step.label}` }}
                     </div>
                 </div>
             </div>
@@ -165,24 +178,25 @@ const selectCustomStep = (targetStepNumber: number) => {
 
             <!-- DYNAMIC 7-COLOR GEOMETRIC HORIZONTAL PROGRESS TIMELINE -->
             <div class="geometric-timeline-row-container">
-                <div v-for="stepNum in 7" :key="stepNum" class="timeline-step-node-item" :class="{
-                    'is-active-stage': currentStep === stepNum,
-                    'is-accessible-stage': stepNum <= maxVisitedStep && currentStep !== stepNum,
-                    'is-locked-stage': stepNum > maxVisitedStep
-                }" @click="selectCustomStep(stepNum)" :title="getStepLabel(stepNum)">
+                <div v-for="step in WIZARD_STEP_LIST" :key="step.id" class="timeline-step-node-item" :class="{
+                    'is-active-stage': currentStep === step.id,
+                    'is-accessible-stage': step.id <= maxStepUnlocked && currentStep !== step.id,
+                    'is-locked-stage': step.id > maxStepUnlocked
+                }" @click="selectCustomStep(step.id)" :title="step.label">
+
                     <span class="universal-status-dot" :class="[
-                        getStageColorClass(stepNum),
-                        { 'is-matt-disabled': stepNum > maxVisitedStep }
+                        step.colorClass,
+                        { 'is-matt-disabled': step.id > maxStepUnlocked }
                     ]"></span>
 
-                    <span v-if="currentStep === stepNum" class="timeline-active-label-text">
-                        {{ getStepLabel(stepNum) }}
+                    <span v-if="currentStep === step.id" class="timeline-active-label-text">
+                        {{ step.label }}
                     </span>
                 </div>
             </div>
         </div>
 
-        <!-- 3. DEVELOPMENT TESTING TRIGGER: Polished Vector Icon to reset cache rows instantly -->
+        <!-- DEVELOPMENT TESTING TRIGGER BUTTON -->
         <button type="button" @click="triggerResetWizardSession" class="wizard-icon-reset-btn"
             title="Reset Wizard Onboarding Flow">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
@@ -192,35 +206,49 @@ const selectCustomStep = (targetStepNumber: number) => {
             </svg>
         </button>
 
-
     </div>
-    <!-- COMMON SECTION ENDS -->
+    <!-- COMMON NAVIGATION CONTROL ROW ENDS -->
 
-    <!-- STEP 1 IDENTIFICATION: Isolated Child Layer Module -->
-    <Step1Auth v-if="currentStep === WizardStep.IDENTIFICATION" @auth-completed="handleAuthSuccess" />
+    <!-- STEP 1 IDENTIFICATION -->
+    <Step1Auth v-if="currentStep === WizardStep.IDENTIFICATION" :advertiserData="authenticatedAdvertiser"
+        @auth-completed="handleAuthSuccess" />
 
-    <!-- STEP 2 PROFILE: Render Decoupled Child Component and listen for save triggers -->
+    <!-- STEP 2 PROFILE SETUP -->
     <Step2Profile v-if="currentStep === WizardStep.PROFILE" :advertiserData="authenticatedAdvertiser"
         @profile-completed="handleProfileSuccess" />
 
-    <!-- NEW STEP 3 ACTION SELECTION GRID HOOK -->
-    <Step3SelectAction v-if="currentStep === WizardStep.ADD_ADVERTISEMENT" @action-selected="handleAdActionSelected"
-        @sync-step-number="handleStepSync" />
+    <!-- STEP 3 PATH SELECTOR -->
+    <Step3SelectAction v-if="currentStep === WizardStep.SELECT_ACTION" :operationMode="advertisementOperation"
+        @action-selected="handleActionSelected" />
 
-    <Step4PropertyLocation v-if="currentStep === WizardStep.PROPERTY_LOCATION" @sync-step-number="handleStepSync"
-        @location-completed="handleLocationStepSuccess" />
+    <!-- STEP 4 PROPERTY LOCATION -->
+    <Step4PropertyLocation v-if="currentStep === WizardStep.PROPERTY_LOCATION"
+        @location-completed="handleLocationSuccess" />
+
+    <!-- STEP 5 PROPERTY TYPE & TRANSACTION PURPOSE SELECTOR -->
+    <Step5PropertyTypePurpose v-if="currentStep === WizardStep.PROPERTY_TYPE_PURPOSE"
+        :advertisementData="authenticatedAdvertiser" @type-purpose-completed="handleTypePurposeSuccess" />
 
 
-    <!-- Placeholder Workspace UI for Remaining Setup Steps (4 to 7) -->
-    <div v-if="currentStep >= 5" class="vertical-stack-form shadow-clipping-safe-zone"
+
+    <div v-if="currentStep === WizardStep.PROPERTY_DETAILS" class="vertical-stack-form shadow-clipping-safe-zone"
         style="padding: 24px; background-color: #ffffff; text-align: center;">
-        <h3 class="font-bold text-gray-800" style="font-size: 14px;">Step {{ currentStep }}: {{
-            getStepLabel(currentStep) }} Panel Active</h3>
-        <p class="text-xs text-gray-400 mt-1">Profile context synchronized for Advertiser ID: #{{
-            authenticatedAdvertiser?.advertiserId }}</p>
+        <span class="label-caption-string"
+            style="font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;">
+            Step 6: PROPERTY_DETAILS Workspace
+        </span>
+        <p class="text-xs text-gray-400">Operation Mode: {{ advertisementOperation }}</p>
     </div>
 
+    <!-- DOWNSTREAM STEPS WORKSPACE CANVASES (6 to 7) -->
+    <div v-if="currentStep >= WizardStep.PROPERTY_DETAILS" class="vertical-stack-form shadow-clipping-safe-zone"
+        style="padding: 24px; background-color: #ffffff; text-align: center;">
+        <h3 class="font-bold text-gray-800" style="font-size: 14px;">
+            Step {{ currentStep }}: {{ WIZARD_STEP_LIST[currentStep - 1]?.label }} Panel Active
+        </h3>
+    </div>
 </template>
+
 <style scoped>
 /* =====================================================================
    1. MASTER CONTAINER FRAMEWORK NAVIGATION & PROGRESS TIMELINE
@@ -321,7 +349,7 @@ const selectCustomStep = (targetStepNumber: number) => {
 }
 
 /* =====================================================================
-   2. TIMELINE FLEX NODES AND SLIDE-EXPAND VARIABLE TYPOGRAPHY LABELS
+   2. TIMELINE FLEX NODES AND SLIDE-EXPAND VARIABLE LABELS
    ===================================================================== */
 .geometric-timeline-row-container {
     display: flex;
@@ -356,7 +384,6 @@ const selectCustomStep = (targetStepNumber: number) => {
 .timeline-active-label-text {
     font-size: 13.5px;
     font-weight: 600;
-    /* FIXED: Automatically targets your central high-contrast theme variables token matrix */
     color: var(--text-color);
     white-space: nowrap;
     animation: slideExpand 0.25s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
@@ -378,58 +405,7 @@ const selectCustomStep = (targetStepNumber: number) => {
 }
 
 /* =====================================================================
-   3. DEEP WRAPPER TARGET INJECTIONS FOR DISCONNECTED CHILD FORMS
-   ===================================================================== */
-
-/* Map standard textboxes and field rows */
-:deep(.flat-form-field) {
-    background-color: var(--bg-color);
-    border: 1.5px solid rgba(0, 0, 0, 0.08);
-    transition: var(--transition-smooth);
-}
-
-:deep(.flat-field-icon) {
-    color: var(--text-color);
-}
-
-:deep(.flat-raw-input),
-:deep(.flat-raw-select) {
-    color: var(--text-color);
-}
-
-:deep(.flat-raw-input::placeholder) {
-    color: var(--text-color);
-}
-
-/* Map custom radio dots and text selections */
-:deep(.label-caption-string) {
-    color: var(--text-color);
-}
-
-:deep(.custom-radio-dot),
-:deep(.custom-checkbox-square) {
-    border: 1.5px solid rgba(0, 0, 0, 0.25);
-    background-color: var(--bg-color);
-    transition: var(--transition-smooth);
-}
-
-/* Map main save/action button rows */
-:deep(.flat-full-width-action-btn) {
-    background-color: var(--text-color);
-    color: var(--bg-color);
-    transition: var(--transition-smooth);
-}
-
-:deep(.flat-btn-icon) {
-    color: var(--bg-color);
-}
-
-:deep(.horizontal-hairline-divider) {
-    background-color: rgba(0, 0, 0, 0.08);
-}
-
-/* =====================================================================
-   4. SYSTEM UTILITIES & HIGH-CONTRAST DATA THEME ADAPTATIONS
+   3. SYSTEM DEV TESTING RESET TRIGGERS
    ===================================================================== */
 .wizard-icon-reset-btn {
     display: inline-flex;
@@ -460,9 +436,7 @@ const selectCustomStep = (targetStepNumber: number) => {
     height: 15px;
 }
 
-/* ---------------------------------------------------------------------
-   DARK CONFIGURATION COMPLIANCE INJECTIONS
-   --------------------------------------------------------------------- */
+/* Dark Theme Adjustments */
 :global([data-theme="dark"]) {
     .custom-dropdown-popover-box {
         border-color: rgba(255, 255, 255, 0.08);
@@ -472,22 +446,9 @@ const selectCustomStep = (targetStepNumber: number) => {
         background-color: rgba(255, 255, 255, 0.04);
     }
 
-    :deep(.flat-form-field) {
-        border: 1.5px solid rgba(255, 255, 255, 0.08);
-    }
-
-    :deep(.custom-radio-dot),
-    :deep(.custom-checkbox-square) {
-        border: 1.5px solid rgba(255, 255, 255, 0.35);
-    }
-
-    :deep(.horizontal-hairline-divider) {
-        background-color: rgba(255, 255, 255, 0.08);
-    }
-
     .wizard-icon-reset-btn {
         background-color: rgba(249, 115, 22, 0.1);
-        border-color: rgba(249, 115, orange, 0.25);
+        border-color: rgba(249, 115, 22, 0.25);
         color: #f97316;
     }
 }

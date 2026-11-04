@@ -3,7 +3,7 @@ import {
   AdvertisementCategory, 
   AdvertisementPropertyType, 
   AdvertisementPurpose 
-} from '../models/enums';
+} from '../models/advertisementEnums';
 
 export const mockAdvertisements: Advertisement[] = [
   {
