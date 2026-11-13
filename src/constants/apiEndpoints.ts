@@ -5,5 +5,7 @@ export const API_ENDPOINTS = {
   VERIFY_OTP: `${API_BASE_URL}/auth/verify-otp`,
   SAVE_ADVERTISER: `${API_BASE_URL}/advertisers`,
   BASE_ADVERTISEMENTS: `${API_BASE_URL}/advertisements`,
-  PROPERTY_DETAILS_LAND: `${API_BASE_URL}/advertisements/land`
+  ADVERTISEMENTS_BY_ADVERTISER: (advertiserId: number) => `${API_BASE_URL}/advertisements/advertiser/${advertiserId}`,
+  PROPERTY_DETAILS_LAND: `${API_BASE_URL}/advertisements/land`,
+  PROPERTY_DETAILS_FLAT: `${API_BASE_URL}/advertisements/flat`
 };

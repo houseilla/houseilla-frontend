@@ -83,6 +83,14 @@ export const PRICING_UNIT_OPTIONS = [
     { label: 'Crore', multiplier: 10000000 }
 ];
 
+export const LAND_AREA_UNIT_OPTIONS = [
+    { label: 'Sq. Ft.', multiplier: 1 },
+    { label: 'Katha', multiplier: 720 },
+    { label: 'Bigha', multiplier: 14400 },
+    { label: 'Acres', multiplier: 43560 }
+];
+
+
 /**
  * Maps numeric enums dynamically to Jackson polymorphic backend string labels
  */
@@ -98,3 +106,31 @@ export const getPolymorphicTypeIndicator = (propertyTypeIndex: number): string =
     };
     return typeMap[propertyTypeIndex] || 'unknown_property_type';
 };
+
+export const BUILDING_AREA_UNIT_OPTIONS = [
+    { label: 'Sq. Ft.', multiplier: 1 },
+    { label: 'Sq. Meter', multiplier: 10.7639 },
+    { label: 'Sq. Yard', multiplier: 9 }
+];
+
+export const FLAT_BHK_OPTIONS: string[] = [
+    '1 RK',
+    '1 BHK',
+    '2 BHK',
+    '3 BHK',
+    '4 BHK',
+    '4+ BHK'
+];
+
+export const FLAT_AMENITY_OPTIONS: string[] = [
+    'Power Backup',
+    '24x7 Security',
+    'Gymnasium',
+    'Swimming Pool',
+    'Clubhouse',
+    'Visitor Parking',
+    'Water Storage',
+    'Intercom',
+    'Children Play Area',
+    'Fire Safety'
+];

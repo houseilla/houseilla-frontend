@@ -1,19 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { advertiserService } from '../../services/advertiserService';
+import { SessionKey } from '../../models/sellWizardEnums.ts';
 import type { Advertiser } from '../../models/advertisement';
 import { AdvertiserType, getAdvertiserTypeLabel } from '../../models/advertisementEnums';
-
-const props = defineProps<{
-    advertiserData: Advertiser | null;
-}>();
 
 const emit = defineEmits<{
     (e: 'profile-completed', updatedAdvertiser: Advertiser): void;
 }>();
 
-// Local active working state references - matches lean backend names
-const localAdvertiser = ref({
+const localAdvertiser = ref<Advertiser>({
     id: 0,
     name: '',
     phone: '',
@@ -27,13 +23,13 @@ const localAdvertiser = ref({
 const validationError = ref<boolean>(false);
 const errorMessage = ref<string>('');
 
-// Sync incoming database object values down to local state on component boot
 onMounted(() => {
-    if (props.advertiserData) {
-        const d = props.advertiserData as any;
+    const cachedAdvertiser = sessionStorage.getItem(SessionKey.ADVERTISER);
+
+    if (cachedAdvertiser) {
+        const d = JSON.parse(cachedAdvertiser);
         localAdvertiser.value = {
-            // CRITICAL FIX: Safe tracking evaluation checking both standard and auth-token properties
-            id: d.id || d.advertiserId || 0,
+            id: d.id || 0,
             name: d.name || '',
             phone: d.phone || '',
             email: d.email || '',
@@ -42,15 +38,12 @@ onMounted(() => {
             advertiserType: d.advertiserType ?? AdvertiserType.INDIVIDUAL,
             contractualStatus: d.contractualStatus || 0
         };
-        console.log('[Step 2 Hydration Success] Active profile key loaded: ', localAdvertiser.value.id);
     }
 });
 
-// Validation computed properties
 const isNameValid = computed(() => localAdvertiser.value.name.trim().length > 0);
 const isTypeValid = computed(() => localAdvertiser.value.advertiserType !== undefined && localAdvertiser.value.advertiserType !== null);
 
-// Safely map radio selection elements through our numeric enums
 const advertiserTypeOptions = computed(() => {
     return [AdvertiserType.BROKER, AdvertiserType.BUILDER, AdvertiserType.INDIVIDUAL].map((enumValue) => ({
         value: enumValue,
@@ -58,7 +51,6 @@ const advertiserTypeOptions = computed(() => {
     }));
 });
 
-// Dispatch the compiled model updates safely to our backend
 const handleSaveProfile = async () => {
     validationError.value = false;
     errorMessage.value = '';
@@ -76,39 +68,44 @@ const handleSaveProfile = async () => {
     }
 
     try {
-        // Compile the payload matching the Advertiser model strictly using number values
         const payload: Advertiser = {
-            // CRITICAL FIX: Retains true persistent identity key instead of dropping to 0
-            id: localAdvertiser.value.id || (props.advertiserData as any)?.advertiserId || 0,
-            name: localAdvertiser.value.name,
+            id: localAdvertiser.value.id,
+            name: localAdvertiser.value.name.trim(),
             phone: localAdvertiser.value.phone,
             email: localAdvertiser.value.email,
-            address: localAdvertiser.value.address,
+            address: localAdvertiser.value.address.trim(),
             location: localAdvertiser.value.location,
             advertiserType: localAdvertiser.value.advertiserType,
             contractualStatus: localAdvertiser.value.contractualStatus
         };
 
-        console.log('[Outbound Advertiser Save Payload]: ', payload);
-
         const data = await advertiserService.saveAdvertiserProfile(payload);
 
         if (data) {
-            console.log('Profile processed and verified successfully!', data);
-            emit('profile-completed', data);
+            const savedEntity: Advertiser = {
+                id: data.id || localAdvertiser.value.id,
+                name: data.name || payload.name,
+                phone: data.phone || payload.phone,
+                email: data.email || payload.email,
+                address: data.address || payload.address,
+                location: data.location || payload.location,
+                advertiserType: data.advertiserType ?? payload.advertiserType,
+                contractualStatus: data.contractualStatus ?? payload.contractualStatus
+            };
+
+            emit('profile-completed', savedEntity);
         }
     } catch (error: any) {
         validationError.value = true;
-
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             errorMessage.value = 'Session expired or unauthorized. Please re-verify your OTP.';
         } else {
             errorMessage.value = error.response?.data?.message || 'Failed communicating with backend security layers.';
         }
-        console.error('API profile transaction faulted:', error);
     }
 };
 </script>
+
 
 <template>
     <div class="vertical-stack-form shadow-clipping-safe-zone">

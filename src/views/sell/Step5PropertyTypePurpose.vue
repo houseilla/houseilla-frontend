@@ -1,49 +1,47 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { advertisementService } from '../../services/advertisementService';
-import { SessionKey } from '../../models/sellWizardEnums';
 import { AdvertisementPurpose, AdvertisementCategory } from '../../models/advertisementEnums';
 import {
+    SessionKey,
     PURPOSE_OPTIONS,
     CATEGORY_OPTIONS,
     PRIVATE_SUBTYPE_OPTIONS,
     COMMERCIAL_SUBTYPE_OPTIONS,
     PRICING_UNIT_OPTIONS
 } from '../../models/sellWizardEnums';
-
 import type { Advertisement } from '@/models/advertisement';
 
-// Core interface props receiving data directly from the parent session shell
-const props = defineProps<{
-    advertisementData: any | null;
-}>();
-
 const emit = defineEmits<{
-    (e: 'type-purpose-completed', updatedPayload: any): void;
+    (e: 'type-purpose-completed', updatedPayload: Advertisement): void;
 }>();
 
-// Local working model states initialized with blank/null baselines
 const localPurpose = ref<number | null>(null);
 const localCategory = ref<number | null>(null);
 const localPropertyType = ref<number | null>(null);
 const localDescription = ref<string>('');
 
 const localPriceValue = ref<number | null>(null);
-const localPriceUnit = ref<number>(100000); // Default standard metric matches Lakh
+const localPriceUnit = ref<number>(100000);
 
 const validationError = ref<boolean>(false);
 const errorMessage = ref<string>('');
 
-// Hydrate state parameters from parent props to avoid state drop on backward navigation
 onMounted(() => {
-    if (props.advertisementData) {
-        const d = props.advertisementData;
+    const cachedAdvertisement = sessionStorage.getItem(SessionKey.ADVERTISEMENT);
+    if (cachedAdvertisement) {
+        const d = JSON.parse(cachedAdvertisement);
         if (d.purpose !== undefined) localPurpose.value = d.purpose;
-        if (d.category !== undefined) localCategory.value = d.category;
-        if (d.propertyType !== undefined) localPropertyType.value = d.propertyType;
+        if (d.propertyType !== undefined) {
+            localPropertyType.value = d.propertyType;
+            if (PRIVATE_SUBTYPE_OPTIONS.some((opt) => opt.value === d.propertyType)) {
+                localCategory.value = AdvertisementCategory.PRIVATE;
+            } else if (COMMERCIAL_SUBTYPE_OPTIONS.some((opt) => opt.value === d.propertyType)) {
+                localCategory.value = AdvertisementCategory.COMMERCIAL;
+            }
+        }
         if (d.description !== undefined) localDescription.value = d.description;
 
-        // Pricing parsing layer logic reverse-calculating backend base values cleanly
         if (d.price && d.price > 0) {
             const rawPrice = d.price;
             if (rawPrice >= 10000000) {
@@ -60,20 +58,17 @@ onMounted(() => {
     }
 });
 
-// Dynamically switches sub-category list arrays based on Residential vs Commercial choice
 const activeSubtypeOptions = computed(() => {
     if (localCategory.value === AdvertisementCategory.PRIVATE) return PRIVATE_SUBTYPE_OPTIONS;
     if (localCategory.value === AdvertisementCategory.COMMERCIAL) return COMMERCIAL_SUBTYPE_OPTIONS;
     return [];
 });
 
-// Reactively calculates input float * unit multiplier
 const computedFinalPrice = computed(() => {
     if (!localPriceValue.value || localPriceValue.value <= 0) return 0;
     return Math.round(localPriceValue.value * localPriceUnit.value);
 });
 
-// Real-time formatted readout string matching standard Indian numbering conventions
 const formattedIndianCurrencyReadout = computed(() => {
     const total = computedFinalPrice.value;
     if (total <= 0) return '';
@@ -90,7 +85,47 @@ const handleCategoryResetChange = () => {
     localPropertyType.value = null;
 };
 
-// --- Re-engineered Execution & Validation Workflow Engine ---
+const generateAutoDescription = () => {
+    validationError.value = false;
+    errorMessage.value = '';
+
+    if (localPurpose.value === null || localCategory.value === null || localPropertyType.value === null) {
+        validationError.value = true;
+        errorMessage.value = 'Please select Purpose, Category, and Property Type before generating a description.';
+        return;
+    }
+
+    const cachedLocation = JSON.parse(sessionStorage.getItem(SessionKey.ADVERTISEMENT) || '{}');
+
+    const purposeLabel = PURPOSE_OPTIONS.find((p) => p.value === localPurpose.value)?.label || '';
+    const categoryLabel = CATEGORY_OPTIONS.find((c) => c.value === localCategory.value)?.label || '';
+    const subtypeLabel = activeSubtypeOptions.value.find((s) => s.value === localPropertyType.value)?.label || 'Property';
+
+    const addressParts = [
+        cachedLocation.propertyNumber,
+        cachedLocation.areaName,
+        cachedLocation.addressLine1,
+        cachedLocation.addressLine2,
+        cachedLocation.district
+    ]
+        .map((part) => (part ? String(part).trim() : ''))
+        .filter(Boolean);
+
+    let locationPhrase = addressParts.length > 0 ? `located at ${addressParts.join(', ')}` : '';
+    if (cachedLocation.pincode) {
+        locationPhrase += locationPhrase ? ` - ${cachedLocation.pincode}` : `in Pincode ${cachedLocation.pincode}`;
+    }
+
+    const purposePhrase = purposeLabel ? `available ${purposeLabel.toLowerCase()}` : 'available';
+    const categoryPrefix = categoryLabel ? `${categoryLabel.toLowerCase()} ` : '';
+    const pricePhrase = formattedIndianCurrencyReadout.value
+        ? ` Priced at ${formattedIndianCurrencyReadout.value}.`
+        : '';
+
+    const generated = `Well-maintained ${categoryPrefix}${subtypeLabel} ${purposePhrase}${locationPhrase ? ' ' + locationPhrase : ''}.${pricePhrase}`;
+    localDescription.value = generated.slice(0, 1000);
+};
+
 const processListingCoreAndPricing = async () => {
     validationError.value = false;
     errorMessage.value = '';
@@ -111,45 +146,29 @@ const processListingCoreAndPricing = async () => {
         return;
     }
 
-    // 1. Recover advertiser information and Step 4 coordinates safely out of cache matrix
     const savedAdvertiser = JSON.parse(sessionStorage.getItem(SessionKey.ADVERTISER) || '{}');
     const cachedLocation = JSON.parse(sessionStorage.getItem(SessionKey.ADVERTISEMENT) || '{}');
 
     const targetAdvertiserId = savedAdvertiser.id || 1;
     const targetAdId = cachedLocation.id || null;
 
-    // 2. Build flat data payload matching your backend Hibernate schema column definitions
     const flatPayload: Advertisement = {
+        ...cachedLocation,
         id: targetAdId || 0,
         advertiserId: targetAdvertiserId,
         propertyType: localPropertyType.value,
         purpose: localPurpose.value,
-        listingStatus: 0, // Forces initial database DRAFT status tracking mode
+        listingStatus: 0,
         price: computedFinalPrice.value,
         description: localDescription.value.trim(),
-
-        // Populate address fields retrieved cleanly from step 4 session logs
-        propertyNumber: cachedLocation.propertyNumber || '',
-        areaName: cachedLocation.areaName || '',
-        addressLine1: cachedLocation.addressLine1 || '',
-        addressLine2: cachedLocation.addressLine2 || '',
-        district: cachedLocation.district || '',
-        pincode: cachedLocation.pincode || '',
-        latitude: cachedLocation.latitude || 22.5726,
-        longitude: cachedLocation.longitude || 88.4339,
         isPremium: cachedLocation.isPremium || 0
     };
 
-    console.log('[Step 5] Outbound Flat Payload Layout:', flatPayload);
-
     try {
-        // 3. Dispatch data across your clean Axios service channel method
         const result = await advertisementService.saveAdvertisementListing(targetAdId, flatPayload);
 
         if (result && result.id) {
-            // Append generated persistent database id key safely back to local state and cache
             flatPayload.id = result.id;
-            sessionStorage.setItem(SessionKey.ADVERTISEMENT, JSON.stringify(flatPayload));
             emit('type-purpose-completed', flatPayload);
         } else {
             validationError.value = true;
@@ -158,10 +177,10 @@ const processListingCoreAndPricing = async () => {
     } catch (error: any) {
         validationError.value = true;
         errorMessage.value = error.response?.data?.message || 'Failed communicating with backend data transaction services.';
-        console.error('API backend transmission breakdown response:', error);
     }
 };
 </script>
+
 
 
 <template>
@@ -260,6 +279,11 @@ const processListingCoreAndPricing = async () => {
 
         <!-- ROW 5: EXTENDED DESCRIPTION TEXTAREA CONSTRAINTS PANEL -->
         <div class="vertical-input-group">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;">
+                <button type="button" @click="generateAutoDescription" class="auto-generate-desc-link">
+                    ✨ Auto-Generate Description
+                </button>
+            </div>
             <div class="flat-textarea-container"
                 :class="{ 'is-invalid-textarea': validationError && localDescription.trim().length < 15 }">
                 <textarea class="flat-raw-textarea"
@@ -286,7 +310,7 @@ const processListingCoreAndPricing = async () => {
                 <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="9 11 12 14 22 4"></polyline>
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1 2-2h11"></path>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2h11"></path>
                 </svg>
                 <span class="btn-label-text">Confirm & Proceed to Specifications</span>
             </button>
@@ -294,6 +318,7 @@ const processListingCoreAndPricing = async () => {
 
     </div>
 </template>
+
 
 <style scoped>
 .hidden-radio-input {
@@ -387,6 +412,23 @@ const processListingCoreAndPricing = async () => {
     padding-left: 4px;
 }
 
+.auto-generate-desc-link {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0076df;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.auto-generate-desc-link:hover {
+    text-decoration: underline;
+}
+
 .shake-error-cue {
     animation: componentLayoutShake 0.4s ease-in-out;
 }
@@ -407,3 +449,4 @@ const processListingCoreAndPricing = async () => {
     }
 }
 </style>
+

@@ -22,8 +22,7 @@ export interface AdvertisementImage {
 // 🌟 2. INDEPENDENT PHYSICAL SPECIFICATION SUB-TYPES (NO NESTING/INHERITANCE)
 export interface FlatDetail {
   id: number;
-  advertisementId: number; // Programmatic 1:1 link to advertisements table
-  isRent: boolean;
+  advertisementId: number;
   isCommunity: boolean;
   buildingRising: string;
   floorNumber: number;

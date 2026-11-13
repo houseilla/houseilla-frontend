@@ -1,22 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { authService } from '../../services/authService';
+import { SessionKey } from '../../models/sellWizardEnums.ts';
 import type { OtpRequest } from '../../models/auth';
 import type { Advertiser } from '../../models/advertisement';
 
-// 1. Accept parent advertiser data to prevent form state drops on backward navigation
-const props = defineProps<{
-    advertiserData: Advertiser | null;
-}>();
-
 const emit = defineEmits<{
-    (e: 'auth-completed', payload: { otpVerified: boolean; token: string; advertiser: Advertiser }): void;
+    (e: 'auth-completed', payload: { advertiser: Advertiser; token: string }): void;
 }>();
 
-// --- Lifecycle State Tracker ---
 const otpStatus = ref<'IDLE' | 'SENT' | 'VERIFIED' | 'LOCKED'>('IDLE');
-
-// --- Counter and Alert Flags ---
 const failedAttempts = ref<number>(0);
 const validationError = ref<boolean>(false);
 const errorMessage = ref<string>('');
@@ -27,22 +20,51 @@ const authForm = ref<OtpRequest>({
     otpCode: ''
 });
 
-// --- 🌟 INTERCEPT PRE-VERIFIED PARENT PROGRESS HOOKS 🌟 ---
+// --- Dynamic Lock Engine Key Hash Helper ---
+const generateUserLockKey = () => {
+    const cleanedPhone = authForm.value.phone.trim();
+    const cleanedEmail = authForm.value.email.trim().toLowerCase();
+    return `auth_lock_${cleanedPhone}_${btoa(cleanedEmail).replace(/=/g, '')}`;
+};
+
+// --- Check and Enforce Persistent Brute Force Controls ---
+const checkLockConstraints = (): boolean => {
+    const lockKey = generateUserLockKey();
+    const cachedLockData = localStorage.getItem(lockKey);
+
+    if (cachedLockData) {
+        const lockDetails = JSON.parse(cachedLockData);
+        const activeTimeRemaining = lockDetails.lockUntil - Date.now();
+
+        if (activeTimeRemaining > 0) {
+            otpStatus.value = 'LOCKED';
+            validationError.value = true;
+            const hoursRemaining = Math.ceil(activeTimeRemaining / (1000 * 60 * 60));
+            errorMessage.value = `Too many incorrect attempts. This profile remains locked for the next ${hoursRemaining} hours.`;
+            return true;
+        } else {
+            localStorage.removeItem(lockKey);
+        }
+    }
+    return false;
+};
+
 onMounted(() => {
-    if (props.advertiserData && props.advertiserData.phone && props.advertiserData.email) {
-        authForm.value.phone = props.advertiserData.phone;
-        authForm.value.email = props.advertiserData.email;
-        // Instantly lock fields into verification layout if data is verified
+    const isOtpVerified = sessionStorage.getItem(SessionKey.OTP_VERIFIED) === 'true';
+    const cachedAdvertiser = sessionStorage.getItem(SessionKey.ADVERTISER);
+
+    if (isOtpVerified && cachedAdvertiser) {
+        const d = JSON.parse(cachedAdvertiser);
+        authForm.value.phone = d.phone || '';
+        authForm.value.email = d.email || '';
         otpStatus.value = 'VERIFIED';
     }
 });
 
-// --- Validation Helpers ---
 const isPhoneValid = () => /^\d{10}$/.test(authForm.value.phone.trim());
 const isEmailValid = () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.value.email.trim());
 const isOtpValid = () => /^\d{6}$/.test(authForm.value.otpCode.trim());
 
-// --- Actions ---
 const verifyAdvertiser = async () => {
     validationError.value = false;
     errorMessage.value = '';
@@ -52,6 +74,8 @@ const verifyAdvertiser = async () => {
         errorMessage.value = 'Please enter a valid phone number and formatted email address.';
         return;
     }
+
+    if (checkLockConstraints()) return;
 
     try {
         const data = await authService.sendOtp(authForm.value);
@@ -78,27 +102,30 @@ const confirmOtpVerification = async () => {
         return;
     }
 
+    if (checkLockConstraints()) return;
+
     try {
         const data = await authService.verifyOtp(authForm.value);
 
         if (data.success) {
             otpStatus.value = 'VERIFIED';
+            failedAttempts.value = 0;
+            localStorage.removeItem(generateUserLockKey());
 
-            let unifiedAdvertiserPayload: Advertiser = {
-                advertiserId: data.isProfileExisting && data.advertiser ? data.advertiser.advertiserId : 0,
+            const synchronizedAdvertiserPayload: Advertiser = {
+                id: data.isProfileExisting && data.advertiser ? data.advertiser.id : 0,
                 name: data.isProfileExisting && data.advertiser ? data.advertiser.name : '',
                 phone: authForm.value.phone.trim(),
                 email: authForm.value.email.trim(),
                 address: data.isProfileExisting && data.advertiser ? data.advertiser.address : '',
-                location: data.isProfileExisting && data.advertiser ? data.advertiser.location : '',
-                type: data.isProfileExisting && data.advertiser ? data.advertiser.type : 0,
-                contractual: data.isProfileExisting && data.advertiser ? data.advertiser.contractual : 0
+                location: data.isProfileExisting && data.advertiser ? data.advertiser.location : 'Kolkata',
+                advertiserType: data.isProfileExisting && data.advertiser ? data.advertiser.advertiserType : 0,
+                contractualStatus: data.isProfileExisting && data.advertiser ? data.advertiser.contractualStatus : 0
             };
 
             emit('auth-completed', {
-                otpVerified: true,
-                token: data.jwtToken || '',
-                advertiser: unifiedAdvertiserPayload
+                advertiser: synchronizedAdvertiserPayload,
+                token: data.jwtToken || ''
             });
         }
     } catch (error: any) {
@@ -106,10 +133,13 @@ const confirmOtpVerification = async () => {
 
         if (error.response && error.response.status === 401) {
             failedAttempts.value++;
+            const lockKey = generateUserLockKey();
 
             if (failedAttempts.value >= 3) {
                 otpStatus.value = 'LOCKED';
-                errorMessage.value = 'Too many incorrect attempts. Please try again in 1 hour.';
+                const lockTimeExpiry = Date.now() + (24 * 60 * 60 * 1000);
+                localStorage.setItem(lockKey, JSON.stringify({ lockUntil: lockTimeExpiry }));
+                errorMessage.value = 'Too many incorrect attempts. This profile has been locked for 24 hours.';
             } else {
                 const serverMessage = error.response.data?.message || 'The verification code entered is incorrect.';
                 errorMessage.value = `${serverMessage} ${3 - failedAttempts.value} attempts remaining.`;
@@ -120,6 +150,8 @@ const confirmOtpVerification = async () => {
     }
 };
 </script>
+
+
 
 <template>
     <div class="vertical-stack-form shadow-clipping-safe-zone">

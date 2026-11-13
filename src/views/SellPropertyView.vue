@@ -1,23 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import type { Advertisement, Advertiser } from '../models/advertisement';
-import { SessionKey, WizardStep, WIZARD_STEP_LIST } from '../models/sellWizardEnums.ts';
+import { SessionKey, WizardStep, WIZARD_STEP_LIST } from '../models/sellWizardEnums';
 import Step1Auth from './sell/Step1Auth.vue';
 import Step2Profile from './sell/Step2Profile.vue';
 import Step3SelectAction from './sell/Step3SelectAction.vue';
 import Step4PropertyLocation from './sell/Step4PropertyLocation.vue';
 import Step5PropertyTypePurpose from './sell/Step5PropertyTypePurpose.vue';
+import Step6PropertyDetails from './sell/Step6PropertyDetails.vue';
 
-// --- Single Source of Truth Wizard Progression Trackers ---
-const currentStep = ref<WizardStep>(
-    Number(sessionStorage.getItem(SessionKey.CURRENT_STEP)) || WizardStep.IDENTIFICATION
-);
 
-const maxStepUnlocked = ref<WizardStep>(
-    Number(sessionStorage.getItem(SessionKey.MAX_STEP)) || WizardStep.IDENTIFICATION
-);
-
-const authenticatedAdvertiser = ref<Advertiser | null>(null);
+const currentStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
+const maxStepUnlocked = ref<WizardStep>(WizardStep.IDENTIFICATION);
 const advertisementOperation = ref<'NEW' | 'EXISTING' | null>(
     (sessionStorage.getItem(SessionKey.ADVERTISEMENT_OPERATION) as 'NEW' | 'EXISTING') || null
 );
@@ -25,78 +19,56 @@ const advertisementOperation = ref<'NEW' | 'EXISTING' | null>(
 const isMapExpanded = ref<boolean>(false);
 const dropdownElementRef = ref<HTMLElement | null>(null);
 
+// --- Consolidated Step Progression Helper ---
+const advanceToStep = (nextStep: WizardStep) => {
+    currentStep.value = nextStep;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(nextStep));
+
+    if (maxStepUnlocked.value < nextStep) {
+        maxStepUnlocked.value = nextStep;
+        sessionStorage.setItem(SessionKey.MAX_STEP, String(nextStep));
+    }
+};
+
 // --- Core Event Dispatches & Routing Handlers ---
-const handleAuthSuccess = (payload: { otpVerified: boolean; token: string; advertiser: Advertiser }) => {
-    sessionStorage.setItem(SessionKey.OTP_VERIFIED, String(payload.otpVerified));
+const handleAuthSuccess = (payload: { advertiser: Advertiser; token: string }) => {
+    sessionStorage.setItem(SessionKey.OTP_VERIFIED, 'true');
     sessionStorage.setItem(SessionKey.AUTH_TOKEN, payload.token);
     sessionStorage.setItem(SessionKey.ADVERTISER, JSON.stringify(payload.advertiser));
-
-    authenticatedAdvertiser.value = payload.advertiser;
-    currentStep.value = WizardStep.PROFILE;
-    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROFILE));
-
-    if (maxStepUnlocked.value < WizardStep.PROFILE) {
-        maxStepUnlocked.value = WizardStep.PROFILE;
-        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROFILE));
-    }
+    advanceToStep(WizardStep.PROFILE);
 };
 
 const handleProfileSuccess = (updatedAdvertiser: Advertiser) => {
     sessionStorage.setItem(SessionKey.ADVERTISER, JSON.stringify(updatedAdvertiser));
-    authenticatedAdvertiser.value = updatedAdvertiser;
-
-    currentStep.value = WizardStep.SELECT_ACTION;
-    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.SELECT_ACTION));
-
-    if (maxStepUnlocked.value < WizardStep.SELECT_ACTION) {
-        maxStepUnlocked.value = WizardStep.SELECT_ACTION;
-        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.SELECT_ACTION));
-    }
+    advanceToStep(WizardStep.SELECT_ACTION);
 };
 
-const handleActionSelected = (payload: { mode: 'NEW' | 'EXISTING'; advertisementId: number | null }) => {
+const handleActionSelected = (payload: { mode: 'NEW' | 'EXISTING'; advertisement: Advertisement | null }) => {
     advertisementOperation.value = payload.mode;
     sessionStorage.setItem(SessionKey.ADVERTISEMENT_OPERATION, payload.mode);
 
-    currentStep.value = WizardStep.PROPERTY_LOCATION;
-    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROPERTY_LOCATION));
-
-    if (maxStepUnlocked.value < WizardStep.PROPERTY_LOCATION) {
-        maxStepUnlocked.value = WizardStep.PROPERTY_LOCATION;
-        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROPERTY_LOCATION));
+    if (payload.mode === 'EXISTING' && payload.advertisement) {
+        sessionStorage.setItem(SessionKey.ADVERTISEMENT, JSON.stringify(payload.advertisement));
+    } else {
+        sessionStorage.removeItem(SessionKey.ADVERTISEMENT);
     }
-};
 
+    advanceToStep(WizardStep.PROPERTY_LOCATION);
+};
 
 const handleLocationSuccess = (completedAdvertisement: Advertisement) => {
-    // 1. Commit the expanded location details directly to session storage
     sessionStorage.setItem(SessionKey.ADVERTISEMENT, JSON.stringify(completedAdvertisement));
-
-    // 2. Route the user onward cleanly to Step 5 (PROPERTY_TYPE_PURPOSE)
-    currentStep.value = WizardStep.PROPERTY_TYPE_PURPOSE;
-    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROPERTY_TYPE_PURPOSE));
-
-    if (maxStepUnlocked.value < WizardStep.PROPERTY_TYPE_PURPOSE) {
-        maxStepUnlocked.value = WizardStep.PROPERTY_TYPE_PURPOSE;
-        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROPERTY_TYPE_PURPOSE));
-    }
-
-    console.log('%c[SellProperty Parent] Step 4 complete. Location added, advanced to Step 5.', 'color: #2ecc71; font-weight: bold;');
+    advanceToStep(WizardStep.PROPERTY_TYPE_PURPOSE);
 };
 
-const handleTypePurposeSuccess = (completedPayload: any) => {
-    // 1. Commit the expanded dataset parameters directly into Session Storage
+const handleTypePurposeSuccess = (completedPayload: Advertisement) => {
     sessionStorage.setItem(SessionKey.ADVERTISEMENT, JSON.stringify(completedPayload));
+    advanceToStep(WizardStep.PROPERTY_DETAILS);
+};
 
-    // 2. Advance active view tracker directly to the next level index
-    currentStep.value = WizardStep.PROPERTY_DETAILS;
-    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.PROPERTY_DETAILS));
-
-    if (maxStepUnlocked.value < WizardStep.PROPERTY_DETAILS) {
-        maxStepUnlocked.value = WizardStep.PROPERTY_DETAILS;
-        sessionStorage.setItem(SessionKey.MAX_STEP, String(WizardStep.PROPERTY_DETAILS));
-    }
-    console.log('%c[SellProperty Parent] Step 5 complete. Data saved, advanced to Step 6.', 'color: #2ecc71; font-weight: bold;');
+const handlePropertyDetailsSuccess = (savedDetails: Record<string, any>) => {
+    sessionStorage.setItem(SessionKey.PROPERTY_DETAILS, JSON.stringify(savedDetails));
+    advanceToStep(WizardStep.PHOTOS_MEDIA);
 };
 
 const selectCustomStep = (targetStepId: WizardStep) => {
@@ -119,25 +91,27 @@ const handleWindowOutsideClick = (event: MouseEvent) => {
     }
 };
 
-// --- Lifecycle State Recovery Hydration Engine ---
+// --- Security Routing and Hydration Engine ---
 onMounted(() => {
     window.addEventListener('click', handleWindowOutsideClick);
 
-    const savedAdvertiser = sessionStorage.getItem(SessionKey.ADVERTISER);
-    const savedCurrentStep = sessionStorage.getItem(SessionKey.CURRENT_STEP);
-    const savedMaxStep = sessionStorage.getItem(SessionKey.MAX_STEP);
+    const isOtpVerified = sessionStorage.getItem(SessionKey.OTP_VERIFIED) === 'true';
+    const activeToken = sessionStorage.getItem(SessionKey.AUTH_TOKEN);
+    const cachedAdvertiser = sessionStorage.getItem(SessionKey.ADVERTISER);
 
-    if (savedAdvertiser) {
-        authenticatedAdvertiser.value = JSON.parse(savedAdvertiser);
-    }
-    if (savedCurrentStep) {
-        currentStep.value = parseInt(savedCurrentStep, 10) as WizardStep;
-    }
-    if (savedMaxStep) {
-        maxStepUnlocked.value = parseInt(savedMaxStep, 10) as WizardStep;
-    } else if (savedCurrentStep) {
-        maxStepUnlocked.value = parseInt(savedCurrentStep, 10) as WizardStep;
-        sessionStorage.setItem(SessionKey.MAX_STEP, savedCurrentStep);
+    if (isOtpVerified && activeToken && cachedAdvertiser) {
+        const savedCurrentStep = sessionStorage.getItem(SessionKey.CURRENT_STEP);
+        currentStep.value = savedCurrentStep ? (parseInt(savedCurrentStep, 10) as WizardStep) : WizardStep.PROFILE;
+
+        const savedMaxStep = sessionStorage.getItem(SessionKey.MAX_STEP);
+        maxStepUnlocked.value = savedMaxStep ? (parseInt(savedMaxStep, 10) as WizardStep) : currentStep.value;
+    } else {
+        sessionStorage.removeItem(SessionKey.OTP_VERIFIED);
+        sessionStorage.removeItem(SessionKey.AUTH_TOKEN);
+        sessionStorage.removeItem(SessionKey.ADVERTISER);
+        currentStep.value = WizardStep.IDENTIFICATION;
+        maxStepUnlocked.value = WizardStep.IDENTIFICATION;
+        sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.IDENTIFICATION));
     }
 });
 
@@ -145,6 +119,7 @@ onUnmounted(() => {
     window.removeEventListener('click', handleWindowOutsideClick);
 });
 </script>
+
 
 <template>
     <!-- COMMON NAVIGATION CONTROL ROW STARTS -->
@@ -210,16 +185,13 @@ onUnmounted(() => {
     <!-- COMMON NAVIGATION CONTROL ROW ENDS -->
 
     <!-- STEP 1 IDENTIFICATION -->
-    <Step1Auth v-if="currentStep === WizardStep.IDENTIFICATION" :advertiserData="authenticatedAdvertiser"
-        @auth-completed="handleAuthSuccess" />
+    <Step1Auth v-if="currentStep === WizardStep.IDENTIFICATION" @auth-completed="handleAuthSuccess" />
 
     <!-- STEP 2 PROFILE SETUP -->
-    <Step2Profile v-if="currentStep === WizardStep.PROFILE" :advertiserData="authenticatedAdvertiser"
-        @profile-completed="handleProfileSuccess" />
+    <Step2Profile v-if="currentStep === WizardStep.PROFILE" @profile-completed="handleProfileSuccess" />
 
     <!-- STEP 3 PATH SELECTOR -->
-    <Step3SelectAction v-if="currentStep === WizardStep.SELECT_ACTION" :operationMode="advertisementOperation"
-        @action-selected="handleActionSelected" />
+    <Step3SelectAction v-if="currentStep === WizardStep.SELECT_ACTION" @action-selected="handleActionSelected" />
 
     <!-- STEP 4 PROPERTY LOCATION -->
     <Step4PropertyLocation v-if="currentStep === WizardStep.PROPERTY_LOCATION"
@@ -227,26 +199,21 @@ onUnmounted(() => {
 
     <!-- STEP 5 PROPERTY TYPE & TRANSACTION PURPOSE SELECTOR -->
     <Step5PropertyTypePurpose v-if="currentStep === WizardStep.PROPERTY_TYPE_PURPOSE"
-        :advertisementData="authenticatedAdvertiser" @type-purpose-completed="handleTypePurposeSuccess" />
+        @type-purpose-completed="handleTypePurposeSuccess" />
+
+    <!-- STEP 6 PROPERTY DETAILS -->
+    <Step6PropertyDetails v-if="currentStep === WizardStep.PROPERTY_DETAILS"
+        @details-completed="handlePropertyDetailsSuccess" />
 
 
-
-    <div v-if="currentStep === WizardStep.PROPERTY_DETAILS" class="vertical-stack-form shadow-clipping-safe-zone"
-        style="padding: 24px; background-color: #ffffff; text-align: center;">
-        <span class="label-caption-string"
-            style="font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;">
-            Step 6: PROPERTY_DETAILS Workspace
-        </span>
-        <p class="text-xs text-gray-400">Operation Mode: {{ advertisementOperation }}</p>
-    </div>
-
-    <!-- DOWNSTREAM STEPS WORKSPACE CANVASES (6 to 7) -->
-    <div v-if="currentStep >= WizardStep.PROPERTY_DETAILS" class="vertical-stack-form shadow-clipping-safe-zone"
+    <!-- DOWNSTREAM STEPS WORKSPACE CANVAS (Step 7) -->
+    <div v-if="currentStep > WizardStep.PROPERTY_DETAILS" class="vertical-stack-form shadow-clipping-safe-zone"
         style="padding: 24px; background-color: #ffffff; text-align: center;">
         <h3 class="font-bold text-gray-800" style="font-size: 14px;">
             Step {{ currentStep }}: {{ WIZARD_STEP_LIST[currentStep - 1]?.label }} Panel Active
         </h3>
     </div>
+
 </template>
 
 <style scoped>
