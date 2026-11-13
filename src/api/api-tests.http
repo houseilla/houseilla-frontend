@@ -13,7 +13,7 @@ Content-Type: application/json
 
 {
   "phone": "1234567890",
-  "email": "test@houseilla.in",
+  "email": "test@houseilla.in", 
   "otpCode": "736572"
 }
 
