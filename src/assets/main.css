@@ -7,7 +7,7 @@
   --accent-color: #0077b6;
   --shadow-light: #ffffff;
   --shadow-dark: #b8c4d2;
-
+ 
   /* Shared Neomorphic Tokens */ 
   --neomorphic-flat: 6px 6px 12px var(--shadow-dark), 
     -6px -6px 12px var(--shadow-light);
