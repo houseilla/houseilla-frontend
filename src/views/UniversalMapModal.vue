@@ -18,11 +18,10 @@ const emit = defineEmits<{
     (e: 'confirm', payload: { latitude: number; longitude: number }): void;
 }>();
 
-// --- Isolated Map States ---
 const stagedLat = ref<number>(props.latitude || 22.5726);
 const stagedLng = ref<number>(props.longitude || 88.3639);
 const mapSearchQuery = ref<string>('');
-const searchSuggestions = ref<any>();
+const searchSuggestions = ref<any[] | null>(null);
 const isSearching = ref<boolean>(false);
 const showSuggestionsDropdown = ref<boolean>(false);
 let debounceTimeout: any = null;
@@ -47,7 +46,7 @@ const initializeFreeLeafletMap = () => {
             <circle cx="256" cy="192" r="44" fill="#ffffff" />
           </svg>
         `,
-        iconSize: [28, 28],
+        iconSize:[32, 32],
         iconAnchor: [16, 32]
     });
 
@@ -57,8 +56,8 @@ const initializeFreeLeafletMap = () => {
         minZoom: 7,
         maxBounds: westBengalBounds,
         maxBoundsViscosity: 1.0,
-        zoomControl: false,       // 🌟 1. Manual zoom control button panel removed completely
-        scrollWheelZoom: true     // 🌟 3. Re-enabled natural interaction scrolling
+        zoomControl: false,
+        scrollWheelZoom: true
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -101,6 +100,9 @@ const destroyMap = () => {
 };
 
 watch(() => props.isOpen, async (newValue) => {
+    document.documentElement.style.overflow = newValue ? 'hidden' : '';
+    document.body.style.overflow = newValue ? 'hidden' : '';
+
     if (newValue) {
         stagedLat.value = props.latitude || 22.5726;
         stagedLng.value = props.longitude || 88.3639;
@@ -112,10 +114,13 @@ watch(() => props.isOpen, async (newValue) => {
 }, { immediate: true });
 
 onUnmounted(() => {
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
     destroyMap();
 });
 
 const handleMapAddressSearchQuery = () => {
+    
     showSuggestionsDropdown.value = false;
     const inputString = mapSearchQuery.value.trim();
     if (inputString.length < 3) {
@@ -128,7 +133,7 @@ const handleMapAddressSearchQuery = () => {
         isSearching.value = true;
         try {
             const optimizedQuery = `${inputString}, West Bengal`;
-            const biasQueryUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(optimizedQuery)}&limit=8`;
+            const biasQueryUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(optimizedQuery)}&limit=10`;
             const response = await fetch(biasQueryUrl);
             const data = await response.json();
 
@@ -140,7 +145,7 @@ const handleMapAddressSearchQuery = () => {
                         coordinates: feature.geometry.coordinates
                     };
                 });
-                showSuggestionsDropdown.value = searchSuggestions.value.length > 0;
+                showSuggestionsDropdown.value = (searchSuggestions.value?.length ?? 0) > 0;
             }
         } catch (error) {
             console.error('Lookup faulted:', error);
@@ -172,44 +177,46 @@ const handleConfirmSelection = () => {
 };
 </script>
 
-
 <template>
-    <div v-if="isOpen" class="fullscreen-map-popup-overlay">
+    <Teleport to="body">
+        <div v-if="isOpen" class="fullscreen-map-popup-overlay">
 
-        <!-- HUD CONTROLS OVERLAY ROW -->
-        <div class="top-floating-hud-row">
-            <div class="hud-search-field-wrapper" :style="readOnly ? 'visibility: hidden;' : ''">
-                <svg class="hud-search-vector" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" class="hud-raw-text-input" placeholder="Search address to pin..."
-                    v-model="mapSearchQuery" @input="handleMapAddressSearchQuery" />
-                <span v-if="isSearching" class="hud-spinner-icon">⏳</span>
+            <!-- HUD CONTROLS OVERLAY ROW -->
+            <div class="top-floating-hud-row">
+                <div class="hud-search-field-wrapper" :style="readOnly ? 'visibility: hidden;' : ''">
+                    <svg class="hud-search-vector" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="hud-raw-text-input" placeholder="Search address to pin..."
+                        v-model="mapSearchQuery" @input="handleMapAddressSearchQuery" />
+                    <span v-if="isSearching" class="hud-spinner-icon">⏳</span>
 
-                <button type="button" @click.stop="handleConfirmSelection" class="hud-embedded-pin-btn">📍 Confirm
-                    Pin</button>
+                    <button type="button" @click.stop="handleConfirmSelection" class="hud-embedded-pin-btn">
+                        📍 Confirm Pin
+                    </button>
 
-                <!-- Suggestions Dropdown -->
-                <div v-if="showSuggestionsDropdown" class="autocomplete-popover-dropdown">
-                    <div v-for="(suggestion, i) in searchSuggestions" :key="i" class="autocomplete-option-row"
-                        @click="handleSelectSuggestionItem(suggestion)">
-                        📍 {{ suggestion.label }}
+                    <!-- Suggestions Dropdown -->
+                    <div v-if="showSuggestionsDropdown" class="autocomplete-popover-dropdown">
+                        <div v-for="(suggestion, i) in searchSuggestions" :key="i" class="autocomplete-option-row"
+                            @click="handleSelectSuggestionItem(suggestion)">
+                            📍 {{ suggestion.label }}
+                        </div>
                     </div>
                 </div>
+
+                <!-- Sleek Close Icon Trigger -->
+                <button type="button" class="hud-close-icon-only-trigger" @click="emit('close')" title="Close Map">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
-            <!-- Sleek Close Icon Trigger -->
-            <button type="button" class="hud-close-icon-only-trigger" @click="emit('close')" title="Close Map">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+            <div id="universal-leaflet-canvas" class="live-leaflet-canvas-core"></div>
         </div>
-
-        <div id="universal-leaflet-canvas" class="live-leaflet-canvas-core"></div>
-    </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -218,10 +225,10 @@ const handleConfirmSelection = () => {
    ===================================================================== */
 .fullscreen-map-popup-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
     background-color: #0f172a;
     z-index: 9999999 !important;
     display: flex;
@@ -231,11 +238,12 @@ const handleConfirmSelection = () => {
 .live-leaflet-canvas-core {
     width: 100%;
     height: 100%;
+    overflow: hidden;
     z-index: 1;
 }
 
 /* =====================================================================
-   2. FLOATING TOP HUD CONTROL PANEL (SYMMETRICAL PAD EXTENSION)
+   2. FLOATING TOP HUD CONTROL PANEL
    ===================================================================== */
 .top-floating-hud-row {
     position: absolute;
@@ -246,12 +254,12 @@ const handleConfirmSelection = () => {
     align-items: center;
     gap: 12px;
     z-index: 999999;
-    width: calc(100% - 40px);
 }
 
 .hud-search-field-wrapper {
     position: relative;
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     background-color: #1e2530;
@@ -272,6 +280,7 @@ const handleConfirmSelection = () => {
 
 .hud-raw-text-input {
     width: 100%;
+    min-width: 0;
     background: transparent;
     border: none;
     outline: none;
@@ -284,7 +293,9 @@ const handleConfirmSelection = () => {
 .hud-spinner-icon {
     font-size: 13px;
     margin-left: 6px;
+    margin-right: 8px;
     color: rgba(255, 255, 255, 0.7);
+    flex-shrink: 0;
 }
 
 .hud-embedded-pin-btn {
@@ -298,6 +309,7 @@ const handleConfirmSelection = () => {
     font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0;
     box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2);
     transition: background 0.15s ease;
 }
@@ -307,7 +319,7 @@ const handleConfirmSelection = () => {
 }
 
 /* =====================================================================
-   3. 🌟 2. RESTORED: RED ACTION CLOSE TRIGGER BRANDING STYLE RULES
+   3. RED ACTION CLOSE TRIGGER BUTTON
    ===================================================================== */
 .hud-close-icon-only-trigger {
     display: inline-flex;
@@ -323,6 +335,11 @@ const handleConfirmSelection = () => {
     box-shadow: 0 10px 25px -5px rgba(231, 76, 60, 0.3);
     transition: background 0.15s ease, transform 0.1s ease;
     flex-shrink: 0;
+}
+
+.hud-close-icon-only-trigger svg {
+    width: 18px;
+    height: 18px;
 }
 
 .hud-close-icon-only-trigger:hover {
@@ -347,6 +364,7 @@ const handleConfirmSelection = () => {
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
     max-height: 220px;
     overflow-y: auto;
+    z-index: 1000000;
 }
 
 .autocomplete-option-row {
@@ -368,20 +386,14 @@ const handleConfirmSelection = () => {
     border: none !important;
 }
 
-.flat-validation-alert {
-    border-color: #ea580c !important;
-    background-color: rgba(234, 88, 12, 0.02) !important;
-}
-
 /* =====================================================================
-   📱 MOBILE HUD LAYOUT QUERIES
+   5. MOBILE HUD LAYOUT QUERIES
    ===================================================================== */
 @media (max-width: 640px) {
     .top-floating-hud-row {
         top: 12px;
         left: 12px;
         right: 12px;
-        width: calc(100% - 24px);
         gap: 8px;
     }
 
@@ -406,3 +418,4 @@ const handleConfirmSelection = () => {
     }
 }
 </style>
+

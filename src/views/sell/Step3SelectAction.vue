@@ -118,11 +118,13 @@ const handleDeleteListing = async (ad: Advertisement) => {
         if (selectedAdvertisementId.value === ad.id) {
             selectedAdvertisementId.value = null;
             selectedOperation.value = null;
+            sessionStorage.removeItem(SessionKey.ADVERTISEMENT);
         }
     } catch (err) {
         fetchError.value = 'Failed to delete advertisement. Please try again.';
     }
 };
+
 
 const formatPrice = (price: number): string => {
     if (!price || price <= 0) return 'Price not set';

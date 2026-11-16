@@ -35,7 +35,6 @@ export interface StepMetadata {
   colorClass: string;
 }
 
-// Unified step list config metadata array decoupled from naming collisions
 export const WIZARD_STEP_LIST: StepMetadata[] = [
   { id: WizardStep.IDENTIFICATION,        label: 'Advertiser Identification', colorClass: 'dot-brand-blue' },
   { id: WizardStep.PROFILE,               label: 'Advertiser Profile',        colorClass: 'dot-brand-orange' },
@@ -46,13 +45,11 @@ export const WIZARD_STEP_LIST: StepMetadata[] = [
   { id: WizardStep.PHOTOS_MEDIA,          label: 'Photos & Media',            colorClass: 'dot-brand-red' }
 ];
 
-
 export interface RadioOption {
     value: number;
     label: string;
 }
 
-// Static configuration arrays moved out of component memory loops
 export const PURPOSE_OPTIONS: RadioOption[] = [
     { value: AdvertisementPurpose.SALE, label: AdvertisementPurposeLabels[AdvertisementPurpose.SALE] },
     { value: AdvertisementPurpose.RENT, label: AdvertisementPurposeLabels[AdvertisementPurpose.RENT] },
@@ -90,10 +87,6 @@ export const LAND_AREA_UNIT_OPTIONS = [
     { label: 'Acres', multiplier: 43560 }
 ];
 
-
-/**
- * Maps numeric enums dynamically to Jackson polymorphic backend string labels
- */
 export const getPolymorphicTypeIndicator = (propertyTypeIndex: number): string => {
     const typeMap: Record<number, string> = {
         [AdvertisementPropertyType.PRIVATE_LAND]: 'land',
@@ -133,4 +126,22 @@ export const FLAT_AMENITY_OPTIONS: string[] = [
     'Intercom',
     'Children Play Area',
     'Fire Safety'
+];
+
+export const ROAD_FACING_OPTIONS: string[] = [
+    'North',
+    'South',
+    'East',
+    'West',
+    'North-East',
+    'North-West',
+    'South-East',
+    'South-West'
+];
+
+export const OFFICE_FURNISHED_OPTIONS: string[] = [
+    'Bare Shell',
+    'Unfurnished',
+    'Semi-Furnished',
+    'Fully Furnished'
 ];

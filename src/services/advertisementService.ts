@@ -1,11 +1,16 @@
 import apiClient from './apiClient';
 import { API_ENDPOINTS } from '../constants/apiEndpoints';
-import type { Advertisement, LandDetail, FlatDetail } from '../models/advertisement';
+import type {
+  Advertisement,
+  LandDetail,
+  FlatDetail,
+  HouseDetail,
+  OfficeDetail,
+  ShopDetail,
+  WarehouseDetail
+} from '../models/advertisement';
 
 export const advertisementService = {
-  /**
-   * Fetches all existing advertisements owned by the given advertiser ID.
-   */
   async getAdvertisementsByAdvertiser(advertiserId: number): Promise<Advertisement[]> {
     const response = await apiClient.get<Advertisement[]>(
       API_ENDPOINTS.ADVERTISEMENTS_BY_ADVERTISER(advertiserId)
@@ -13,9 +18,6 @@ export const advertisementService = {
     return response.data;
   },
 
-  /**
-   * Step 5 Wizard Phase: Saves or updates core listing data row.
-   */
   async saveAdvertisementListing(
     advertisementId: number | null,
     payload: Advertisement
@@ -33,30 +35,37 @@ export const advertisementService = {
     return response.data;
   },
 
-
-  /**
-   * Deletes an advertisement and its associated property details row.
-   */
   async deleteAdvertisement(advertisementId: number): Promise<void> {
     await apiClient.delete(`${API_ENDPOINTS.BASE_ADVERTISEMENTS}/${advertisementId}`);
   },
 
-  /**
-   * Step 6 Wizard Phase: Hydrates Land physical specifications mapping advertisementId.
-   */
   async saveLandDetail(payload: LandDetail): Promise<LandDetail> {
-    const endpoint = `${API_ENDPOINTS.PROPERTY_DETAILS_LAND}`;
-    const response = await apiClient.post<LandDetail>(endpoint, payload);
+    const response = await apiClient.post<LandDetail>(API_ENDPOINTS.PROPERTY_DETAILS_LAND, payload);
     return response.data;
   },
 
-  /**
-   * Step 6 Wizard Phase: Hydrates Flat physical specifications mapping advertisementId.
-   */
   async saveFlatDetail(payload: FlatDetail): Promise<FlatDetail> {
-    const endpoint = `${API_ENDPOINTS.PROPERTY_DETAILS_FLAT}`;
-    const response = await apiClient.post<FlatDetail>(endpoint, payload);
+    const response = await apiClient.post<FlatDetail>(API_ENDPOINTS.PROPERTY_DETAILS_FLAT, payload);
+    return response.data;
+  },
+
+  async saveHouseDetail(payload: HouseDetail): Promise<HouseDetail> {
+    const response = await apiClient.post<HouseDetail>(API_ENDPOINTS.PROPERTY_DETAILS_HOUSE, payload);
+    return response.data;
+  },
+
+  async saveOfficeDetail(payload: OfficeDetail): Promise<OfficeDetail> {
+    const response = await apiClient.post<OfficeDetail>(API_ENDPOINTS.PROPERTY_DETAILS_OFFICE, payload);
+    return response.data;
+  },
+
+  async saveShopDetail(payload: ShopDetail): Promise<ShopDetail> {
+    const response = await apiClient.post<ShopDetail>(API_ENDPOINTS.PROPERTY_DETAILS_SHOP, payload);
+    return response.data;
+  },
+
+  async saveWarehouseDetail(payload: WarehouseDetail): Promise<WarehouseDetail> {
+    const response = await apiClient.post<WarehouseDetail>(API_ENDPOINTS.PROPERTY_DETAILS_WAREHOUSE, payload);
     return response.data;
   }
-
 };

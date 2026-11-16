@@ -11,15 +11,13 @@ export interface Advertiser {
   contractualStatus: number; 
 }
 
-// 🌟 1. DECOUPLED MEDIA SCHEMA DRIVEN BY SCALAR FOREIGN KEY
 export interface AdvertisementImage {
   id?: number;
-  advertisementId: number; // Linked unidirectionally to parent advertisement
-  filePayload: string;     // Transmitted/Received as raw binary string or Base64
-  base64Data?: string;     // Transient field for local browser preview hydration
+  advertisementId: number;
+  filePayload: string;
+  base64Data?: string;
 }
 
-// 🌟 2. INDEPENDENT PHYSICAL SPECIFICATION SUB-TYPES (NO NESTING/INHERITANCE)
 export interface FlatDetail {
   id: number;
   advertisementId: number;
@@ -30,15 +28,15 @@ export interface FlatDetail {
   flatType: string;
   liftAvailable: boolean;
   parkings: number;
-  possessionBy: string;   // ISO Date format string (YYYY-MM-DD)
+  possessionBy: string;
   propertyAge: number;
   amenities: string;
 }
 
 export interface LandDetail {
   id: number;
-  advertisementId: number; // Unique constraint enforced programmatic link
-  landArea: number;        // Standardized name matching refactored backend field
+  advertisementId: number;
+  landArea: number;
   description: string;
 }
 
@@ -48,7 +46,6 @@ export interface HouseDetail {
   landArea: number;
   carpetArea: number;
   floors: number;
-  parkings: number;
   noOfParking: number;
   roadFacing: string;
   roadWidth: number;
@@ -75,17 +72,12 @@ export interface WarehouseDetail {
   area: number;
 }
 
-// 🌟 3. LEAN CENTER TRANSACTIONAL listing SCHEMA CONTRACT
 export interface Advertisement {
-  id: number; // Changed from advertisementId to match backend entity 'id'
-  advertiserId: number; // Scalar structural reference key tracking Step 1 profile
-
-  // Enums configuration mapped precisely to backend ORDINAL variables
+  id: number;
+  advertiserId: number;
   propertyType: AdvertisementPropertyType; 
   purpose: AdvertisementPurpose;
-  listingStatus: AdvertisementStatus; // Tracks DRAFT / ACTIVE states seamlessly
-
-  // Financial and Geospatial metrics mapped to matching precision numbers
+  listingStatus: AdvertisementStatus;
   price: number;
   description: string;
   propertyNumber?: string;
@@ -96,9 +88,7 @@ export interface Advertisement {
   pincode?: string;
   latitude?: number;
   longitude?: number;
-  isPremium: number; // 0 = Standard, 1 = Premium Feature Listing
-
-  // Audit Logs Timestamps
+  isPremium: number;
   updateDate?: string; 
   createDate?: string; 
 }

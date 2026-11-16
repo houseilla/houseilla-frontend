@@ -106,7 +106,6 @@ const handleSaveProfile = async () => {
 };
 </script>
 
-
 <template>
     <div class="vertical-stack-form shadow-clipping-safe-zone">
 
@@ -116,7 +115,10 @@ const handleSaveProfile = async () => {
                 <path
                     d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
             </svg>
-            <input type="tel" class="flat-raw-input" v-model="localAdvertiser.phone" disabled />
+            <div class="flat-field-labeled-stack">
+                <span class="flat-field-top-label">Verified Mobile Number</span>
+                <input type="tel" class="flat-raw-input" v-model="localAdvertiser.phone" disabled />
+            </div>
         </div>
 
         <div class="divider-line-container">
@@ -129,7 +131,10 @@ const handleSaveProfile = async () => {
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                 <polyline points="22,6 12,13 2,6" />
             </svg>
-            <input type="email" class="flat-raw-input" v-model="localAdvertiser.email" disabled />
+            <div class="flat-field-labeled-stack">
+                <span class="flat-field-top-label">Verified Email Address</span>
+                <input type="email" class="flat-raw-input" v-model="localAdvertiser.email" disabled />
+            </div>
         </div>
 
         <div class="divider-line-container">
@@ -142,7 +147,11 @@ const handleSaveProfile = async () => {
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
             </svg>
-            <input type="text" class="flat-raw-input" placeholder="Enter Full Name..." v-model="localAdvertiser.name" />
+            <div class="flat-field-labeled-stack">
+                <span class="flat-field-top-label">Full Name</span>
+                <input type="text" class="flat-raw-input" placeholder="Enter your full name..."
+                    v-model="localAdvertiser.name" />
+            </div>
         </div>
 
         <div class="divider-line-container">
@@ -150,15 +159,17 @@ const handleSaveProfile = async () => {
         </div>
 
         <!-- 4. EDITABLE ADVERTISER TYPE RADIO SELECTION BLOCK -->
-        <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid }">
-            <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
-                :class="{ 'is-active-node': option.value === localAdvertiser.advertiserType }">
-                <input type="radio" name="advertiserTypeGroup" :value="option.value"
-                    v-model="localAdvertiser.advertiserType"
-                    style="position: absolute; opacity: 0; width: 0; height: 0;" />
-                <span class="custom-radio-dot"></span>
-                <span class="label-caption-string">{{ option.label }}</span>
-            </label>
+        <div>
+            <span class="flat-section-caption-label">Advertiser Account Type</span>
+            <div class="borderless-flat-radio-row" :class="{ 'is-invalid-field': validationError && !isTypeValid }">
+                <label v-for="option in advertiserTypeOptions" :key="option.value" class="flat-radio-label-node"
+                    :class="{ 'is-active-node': option.value === localAdvertiser.advertiserType }">
+                    <input type="radio" name="advertiserTypeGroup" :value="option.value"
+                        v-model="localAdvertiser.advertiserType" class="hidden-radio-input" />
+                    <span class="custom-radio-dot"></span>
+                    <span class="label-caption-string">{{ option.label }}</span>
+                </label>
+            </div>
         </div>
 
         <!-- Local Validation Error Display Block -->
@@ -173,7 +184,7 @@ const handleSaveProfile = async () => {
         <!-- 5. SAVE PROFILE FOOTER ACTION BUTTON -->
         <div class="flat-btn-row-wrapper">
             <button @click="handleSaveProfile" class="flat-full-width-action-btn" type="button">
-                <span class="btn-text-label">
+                <span class="btn-label-text">
                     {{ localAdvertiser.id ? 'Update Profile Details' : 'Save Profile Details' }}
                 </span>
             </button>

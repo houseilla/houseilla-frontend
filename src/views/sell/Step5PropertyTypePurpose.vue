@@ -27,6 +27,7 @@ const localPriceUnit = ref<number>(100000);
 const validationError = ref<boolean>(false);
 const errorMessage = ref<string>('');
 
+
 onMounted(() => {
     const cachedAdvertisement = sessionStorage.getItem(SessionKey.ADVERTISEMENT);
     if (cachedAdvertisement) {
@@ -158,7 +159,7 @@ const processListingCoreAndPricing = async () => {
         advertiserId: targetAdvertiserId,
         propertyType: localPropertyType.value,
         purpose: localPurpose.value,
-        listingStatus: 0,
+        listingStatus: cachedLocation.listingStatus ?? 0,
         price: computedFinalPrice.value,
         description: localDescription.value.trim(),
         isPremium: cachedLocation.isPremium || 0
@@ -181,54 +182,61 @@ const processListingCoreAndPricing = async () => {
 };
 </script>
 
-
-
 <template>
     <div class="vertical-stack-form shadow-clipping-safe-zone animate-fade-in">
 
         <!-- ROW 1: PURPOSE SELECTOR CHIPS -->
-        <div class="borderless-flat-radio-row mobile-wrapping-radio-row"
-            :class="{ 'is-invalid-field': validationError && localPurpose === null }">
-            <label v-for="opt in PURPOSE_OPTIONS" :key="opt.value" class="flat-radio-label-node"
-                :class="{ 'is-active-node': localPurpose === opt.value }">
-                <input type="radio" name="wizardPurposeGroup" :value="opt.value" v-model="localPurpose"
-                    class="hidden-radio-input" />
-                <span class="custom-radio-dot"></span>
-                <span class="label-caption-string">{{ opt.label }}</span>
-            </label>
+        <div>
+            <span class="flat-section-caption-label">Transaction Purpose</span>
+            <div class="borderless-flat-radio-row mobile-wrapping-radio-row"
+                :class="{ 'is-invalid-field': validationError && localPurpose === null }">
+                <label v-for="opt in PURPOSE_OPTIONS" :key="opt.value" class="flat-radio-label-node"
+                    :class="{ 'is-active-node': localPurpose === opt.value }">
+                    <input type="radio" name="wizardPurposeGroup" :value="opt.value" v-model="localPurpose"
+                        class="hidden-radio-input" />
+                    <span class="custom-radio-dot"></span>
+                    <span class="label-caption-string">{{ opt.label }}</span>
+                </label>
+            </div>
         </div>
 
         <div class="divider-line-container"><span class="horizontal-hairline-divider"></span></div>
 
         <!-- ROW 2: CATEGORY MATRIX SELECTOR -->
-        <div class="borderless-flat-radio-row mobile-wrapping-radio-row"
-            :class="{ 'is-invalid-field': validationError && localCategory === null }">
-            <label v-for="cat in CATEGORY_OPTIONS" :key="cat.value" class="flat-radio-label-node"
-                :class="{ 'is-active-node': localCategory === cat.value }">
-                <input type="radio" name="wizardCategoryGroup" :value="cat.value" v-model="localCategory"
-                    @change="handleCategoryResetChange" class="hidden-radio-input" />
-                <span class="custom-radio-dot"></span>
-                <span class="label-caption-string">{{ cat.label }}</span>
-            </label>
+        <div>
+            <span class="flat-section-caption-label">Property Category</span>
+            <div class="borderless-flat-radio-row mobile-wrapping-radio-row"
+                :class="{ 'is-invalid-field': validationError && localCategory === null }">
+                <label v-for="cat in CATEGORY_OPTIONS" :key="cat.value" class="flat-radio-label-node"
+                    :class="{ 'is-active-node': localCategory === cat.value }">
+                    <input type="radio" name="wizardCategoryGroup" :value="cat.value" v-model="localCategory"
+                        @change="handleCategoryResetChange" class="hidden-radio-input" />
+                    <span class="custom-radio-dot"></span>
+                    <span class="label-caption-string">{{ cat.label }}</span>
+                </label>
+            </div>
         </div>
 
         <div class="divider-line-container"><span class="horizontal-hairline-divider"></span></div>
 
         <!-- ROW 3: DYNAMIC SUBCATEGORY SELECTORS -->
-        <div class="filter-vertical-row remove-bottom-gap">
-            <span v-if="localCategory === null" class="category-selection-required-prompt">
-                Please select a category above to view available property types.
-            </span>
+        <div>
+            <span class="flat-section-caption-label">Property Type</span>
+            <div class="filter-vertical-row remove-bottom-gap">
+                <span v-if="localCategory === null" class="category-selection-required-prompt">
+                    Please select a category above to view available property types.
+                </span>
 
-            <div v-else class="borderless-flat-radio-row mobile-wrapping-radio-row animate-fade-in"
-                :class="{ 'is-invalid-field': validationError && localPropertyType === null }">
-                <label v-for="sub in activeSubtypeOptions" :key="sub.value" class="flat-radio-label-node"
-                    :class="{ 'is-active-node': localPropertyType === sub.value }">
-                    <input type="radio" name="wizardSubtypeGroup" :value="sub.value" v-model="localPropertyType"
-                        class="hidden-radio-input" />
-                    <span class="custom-radio-dot"></span>
-                    <span class="label-caption-string">{{ sub.label }}</span>
-                </label>
+                <div v-else class="borderless-flat-radio-row mobile-wrapping-radio-row animate-fade-in"
+                    :class="{ 'is-invalid-field': validationError && localPropertyType === null }">
+                    <label v-for="sub in activeSubtypeOptions" :key="sub.value" class="flat-radio-label-node"
+                        :class="{ 'is-active-node': localPropertyType === sub.value }">
+                        <input type="radio" name="wizardSubtypeGroup" :value="sub.value" v-model="localPropertyType"
+                            class="hidden-radio-input" />
+                        <span class="custom-radio-dot"></span>
+                        <span class="label-caption-string">{{ sub.label }}</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -236,25 +244,30 @@ const processListingCoreAndPricing = async () => {
 
         <!-- ROW 4: SPLIT PRICING BLOCK INPUTS AND DROPDOWNS -->
         <div class="vertical-input-group">
-            <div class="split-pricing-flex-wrapper">
+            <div class="split-field-flex-wrapper">
 
                 <!-- Financial Input Box -->
-                <div class="flat-form-field price-input-flex-cell"
+                <div class="flat-form-field split-primary-flex-cell"
                     :class="{ 'is-invalid-field': validationError && (!localPriceValue || localPriceValue <= 0) }">
                     <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="1" x2="12" y2="23"></line>
                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                     </svg>
-                    <input type="number" class="flat-raw-input" :placeholder="pricePlaceholderText"
-                        v-model.number="localPriceValue" min="0.01" step="any" />
+                    <div class="flat-field-labeled-stack">
+                        <span class="flat-field-top-label">
+                            {{ localPurpose === AdvertisementPurpose.RENT ? 'Monthly Rent' : localPurpose === AdvertisementPurpose.LEASE ? 'Lease Amount' : 'Expected Price' }}
+                        </span>
+                        <input type="number" class="flat-raw-input" :placeholder="pricePlaceholderText"
+                            v-model.number="localPriceValue" min="0.01" step="any" />
+                    </div>
                 </div>
 
                 <!-- Unit Designation Selector Dropdown -->
-                <div class="flat-form-field unit-dropdown-flex-cell">
-                    <div class="dropdown-labeled-floating-wrapper">
-                        <span class="dropdown-floating-header-label">Unit</span>
-                        <select class="flat-raw-select reset-select-paddings" v-model="localPriceUnit">
+                <div class="flat-form-field split-unit-flex-cell">
+                    <div class="flat-field-labeled-stack no-icon">
+                        <span class="flat-field-top-label">Unit</span>
+                        <select class="flat-raw-select" v-model="localPriceUnit">
                             <option v-for="unit in PRICING_UNIT_OPTIONS" :key="unit.multiplier"
                                 :value="unit.multiplier">
                                 {{ unit.label }}
@@ -270,7 +283,7 @@ const processListingCoreAndPricing = async () => {
             </div>
 
             <!-- Total Indian Local Currency Readout Confirmation String -->
-            <span v-if="formattedIndianCurrencyReadout" class="live-currency-readout animate-fade-in">
+            <span v-if="formattedIndianCurrencyReadout" class="live-conversion-readout animate-fade-in">
                 Calculated Total: <strong>{{ formattedIndianCurrencyReadout }}</strong>
             </span>
         </div>
@@ -286,6 +299,7 @@ const processListingCoreAndPricing = async () => {
             </div>
             <div class="flat-textarea-container"
                 :class="{ 'is-invalid-textarea': validationError && localDescription.trim().length < 15 }">
+                <span class="flat-textarea-header-label">Property Description</span>
                 <textarea class="flat-raw-textarea"
                     placeholder="Describe your property listings context (e.g. landmarks, water access, security or repairs status)..."
                     v-model="localDescription" maxlength="1000"></textarea>
@@ -319,99 +333,7 @@ const processListingCoreAndPricing = async () => {
     </div>
 </template>
 
-
 <style scoped>
-.hidden-radio-input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-}
-
-.mobile-wrapping-radio-row {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 24px;
-    width: 100%;
-}
-
-@media (max-width: 768px) {
-    .mobile-wrapping-radio-row {
-        flex-wrap: wrap;
-        gap: 12px 20px;
-    }
-}
-
-.vertical-input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-}
-
-.split-pricing-flex-wrapper {
-    display: flex;
-    gap: 16px;
-    width: 100%;
-    align-items: center;
-}
-
-.price-input-flex-cell {
-    flex: 7;
-}
-
-.unit-dropdown-flex-cell {
-    flex: 3;
-    padding-right: 12px !important;
-    cursor: pointer;
-}
-
-.dropdown-labeled-floating-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    padding-top: 4px;
-}
-
-.dropdown-floating-header-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-color);
-    opacity: 0.5;
-    margin-bottom: -2px;
-    padding-left: 12px;
-}
-
-.reset-select-paddings {
-    padding-left: 12px !important;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-.flat-dropdown-indicator-arrow {
-    width: 14px;
-    height: 14px;
-    color: var(--text-color);
-    opacity: 0.4;
-    pointer-events: none;
-    flex-shrink: 0;
-    margin-left: -20px;
-    z-index: 10;
-}
-
-.live-currency-readout {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent-color);
-    padding-left: 4px;
-}
-
 .auto-generate-desc-link {
     background: none;
     border: none;
@@ -428,25 +350,6 @@ const processListingCoreAndPricing = async () => {
 .auto-generate-desc-link:hover {
     text-decoration: underline;
 }
-
-.shake-error-cue {
-    animation: componentLayoutShake 0.4s ease-in-out;
-}
-
-@keyframes componentLayoutShake {
-
-    0%,
-    100% {
-        transform: translateX(0);
-    }
-
-    25% {
-        transform: translateX(-4px);
-    }
-
-    75% {
-        transform: translateX(4px);
-    }
-}
 </style>
+
 

@@ -100,14 +100,16 @@ const handleSaveLandDetails = async () => {
     }
 };
 </script>
+
+
 <template>
     <div class="vertical-stack-form animate-fade-in">
 
         <!-- ROW 1: SPLIT LAND AREA INPUT & UNIT SELECTOR -->
         <div class="vertical-input-group">
-            <div class="split-area-flex-wrapper">
+            <div class="split-field-flex-wrapper">
                 <!-- Area Numeric Input -->
-                <div class="flat-form-field area-input-flex-cell"
+                <div class="flat-form-field split-primary-flex-cell"
                     :class="{ 'is-invalid-field': validationError && (!localAreaValue || localAreaValue <= 0) }">
                     <svg class="flat-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -115,15 +117,18 @@ const handleSaveLandDetails = async () => {
                         <line x1="3" y1="9" x2="21" y2="9"></line>
                         <line x1="9" y1="21" x2="9" y2="9"></line>
                     </svg>
-                    <input type="number" class="flat-raw-input" placeholder="Total Plot / Land Area..."
-                        v-model.number="localAreaValue" min="0.01" step="any" />
+                    <div class="flat-field-labeled-stack">
+                        <span class="flat-field-top-label">Total Plot / Land Area</span>
+                        <input type="number" class="flat-raw-input" placeholder="e.g. 5"
+                            v-model.number="localAreaValue" min="0.01" step="any" />
+                    </div>
                 </div>
 
                 <!-- Unit Dropdown -->
-                <div class="flat-form-field unit-dropdown-flex-cell">
-                    <div class="dropdown-labeled-floating-wrapper">
-                        <span class="dropdown-floating-header-label">Unit</span>
-                        <select class="flat-raw-select reset-select-paddings" v-model="localAreaUnit">
+                <div class="flat-form-field split-unit-flex-cell">
+                    <div class="flat-field-labeled-stack no-icon">
+                        <span class="flat-field-top-label">Unit</span>
+                        <select class="flat-raw-select" v-model="localAreaUnit">
                             <option v-for="unit in LAND_AREA_UNIT_OPTIONS" :key="unit.multiplier"
                                 :value="unit.multiplier">
                                 {{ unit.label }}
@@ -138,7 +143,7 @@ const handleSaveLandDetails = async () => {
             </div>
 
             <!-- Live Normalized Sq. Ft. Readout -->
-            <span v-if="formattedSqFtReadout" class="live-area-readout animate-fade-in">
+            <span v-if="formattedSqFtReadout" class="live-conversion-readout animate-fade-in">
                 Standardized Area: <strong>{{ formattedSqFtReadout }}</strong>
             </span>
         </div>
@@ -147,8 +152,9 @@ const handleSaveLandDetails = async () => {
 
         <!-- ROW 2: LAND BOUNDARY & SOIL / ROAD NOTES (OPTIONAL) -->
         <div class="flat-textarea-container">
+            <span class="flat-textarea-header-label">Additional Land Details (Optional)</span>
             <textarea class="flat-raw-textarea"
-                placeholder="Additional land details (e.g. boundary wall, corner plot, road width, mutation/conversion status)..."
+                placeholder="Boundary wall, corner plot, approach road width, mutation or conversion status..."
                 v-model="localDescription" maxlength="1000"></textarea>
             <span class="textarea-character-counter">
                 {{ localDescription.length }} / 1000
@@ -181,73 +187,4 @@ const handleSaveLandDetails = async () => {
 
     </div>
 </template>
-<style scoped>
-.vertical-input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-}
 
-.split-area-flex-wrapper {
-    display: flex;
-    gap: 16px;
-    width: 100%;
-    align-items: center;
-}
-
-.area-input-flex-cell {
-    flex: 7;
-}
-
-.unit-dropdown-flex-cell {
-    flex: 3;
-    padding-right: 12px !important;
-    cursor: pointer;
-}
-
-.dropdown-labeled-floating-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    padding-top: 4px;
-}
-
-.dropdown-floating-header-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-color);
-    opacity: 0.5;
-    margin-bottom: -2px;
-    padding-left: 12px;
-}
-
-.reset-select-paddings {
-    padding-left: 12px !important;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-.flat-dropdown-indicator-arrow {
-    width: 14px;
-    height: 14px;
-    color: var(--text-color);
-    opacity: 0.4;
-    pointer-events: none;
-    flex-shrink: 0;
-    margin-left: -20px;
-    z-index: 10;
-}
-
-.live-area-readout {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent-color);
-    padding-left: 4px;
-}
-</style>
