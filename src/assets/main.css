@@ -8,14 +8,14 @@
   --shadow-light: #ffffff;
   --shadow-dark: #b8c4d2;
 
-  /* Shared Neomorphic Tokens */ 
-  --neomorphic-flat: 6px 6px 12px var(--shadow-dark), 
+  /* Shared Neomorphic Tokens */
+  --neomorphic-flat: 6px 6px 12px var(--shadow-dark),
     -6px -6px 12px var(--shadow-light);
-  --neomorphic-inset: inset 4px 4px 8px var(--shadow-dark), 
+  --neomorphic-inset: inset 4px 4px 8px var(--shadow-dark),
     inset -4px -4px 8px var(--shadow-light);
-  --transition-smooth: background-color 0.3s ease, 
-    color 0.3s ease, box-shadow 0.3s ease, 
-      transform 0.2s cubic-bezier(0.1, 0.8, 0.3, 1);
+  --transition-smooth: background-color 0.3s ease,
+    color 0.3s ease, box-shadow 0.3s ease,
+    transform 0.2s cubic-bezier(0.1, 0.8, 0.3, 1);
 }
 
 [data-theme="dark"] {
@@ -44,7 +44,7 @@ body {
 }
 
 /* ==========================================================================
-   3. Shared Neomorphic Infrastructure (Layout Blocks)
+   3. Shared Neomorphic Infrastructure & Layout Containers
    ========================================================================== */
 .neomorphic-card-base {
   background-color: var(--bg-color);
@@ -52,18 +52,56 @@ body {
   transition: var(--transition-smooth);
 }
 
-.neomorphic-input-base {
-  background-color: var(--bg-color);
-  box-shadow: var(--neomorphic-inset);
-  transition: var(--transition-smooth);
-}
-
 .shadow-clipping-safe-zone {
   padding-bottom: 32px;
 }
 
+.vertical-stack-form {
+  display: flex !important;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.vertical-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.filter-vertical-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  transition: var(--transition-smooth, all 0.3s ease);
+}
+
+.remove-bottom-gap {
+  margin-bottom: -4px;
+}
+
+.divider-line-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.horizontal-hairline-divider {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .horizontal-hairline-divider {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
 /* ==========================================================================
-   4. Unified Flat Forms Engine System (Textboxes, Dropdowns & Textareas)
+   4. Unified Flat Forms Engine (Inputs, Selects, Labels & Textareas)
    ========================================================================== */
 .flat-form-field {
   position: relative;
@@ -94,7 +132,8 @@ body {
   flex-shrink: 0;
 }
 
-.flat-raw-input, .flat-raw-select {
+.flat-raw-input,
+.flat-raw-select {
   border: none;
   background: transparent;
   outline: none;
@@ -117,9 +156,6 @@ body {
   opacity: 0.35;
 }
 
-/* ==========================================================================
-   4.1 Unified Internal Field Labels & Group Captions
-   ========================================================================== */
 .flat-field-labeled-stack {
   display: flex;
   flex-direction: column;
@@ -171,16 +207,7 @@ body {
   user-select: none;
 }
 
-/* ==========================================================================
-   4.2 Shared Split Inputs, Grids, Dropdowns & Live Readouts
-   ========================================================================== */
-.vertical-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-}
-
+/* Split Inputs, Multi-Column Grids & Live Readouts */
 .split-field-flex-wrapper {
   display: flex;
   gap: 16px;
@@ -227,7 +254,8 @@ body {
   color: var(--accent-color);
   padding-left: 4px;
 }
-/* Shared Reusable Multi-line Description Block Injections */
+
+/* Multi-line Description Textarea */
 .flat-textarea-container {
   position: relative;
   width: 100%;
@@ -275,7 +303,6 @@ body {
   opacity: 0.4;
   user-select: none;
 }
-
 /* ==========================================================================
    5. Flat Binary Selection Components (Radio Buttons & Checkboxes)
    ========================================================================== */
@@ -285,6 +312,20 @@ body {
   gap: 24px;
   width: 100%;
   padding: 4px 0;
+}
+
+.mobile-wrapping-radio-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 24px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .mobile-wrapping-radio-row {
+    flex-wrap: wrap;
+    gap: 12px 20px;
+  }
 }
 
 .flat-radio-label-node {
@@ -297,10 +338,15 @@ body {
   opacity: 0.85;
 }
 
-.flat-radio-label-node:hover { opacity: 1; }
-.hidden-radio-input { display: none; }
+.flat-radio-label-node:hover {
+  opacity: 1;
+}
 
-/* 5.1 Custom Radio Circle Graphic Vector */
+.hidden-radio-input {
+  display: none;
+}
+
+/* Custom Radio Circle */
 .custom-radio-dot {
   width: 14px;
   height: 14px;
@@ -312,20 +358,19 @@ body {
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .custom-radio-dot { 
-  border: 1.5px solid rgba(255, 255, 255, 0.35); 
+[data-theme="dark"] .custom-radio-dot {
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
 }
 
-.flat-radio-label-node.is-active-node 
-.custom-radio-dot {
+.flat-radio-label-node.is-active-node .custom-radio-dot {
   border-color: var(--accent-color);
 }
 
-.flat-radio-label-node.is-active-node 
-.custom-radio-dot::after {
+.flat-radio-label-node.is-active-node .custom-radio-dot::after {
   content: '';
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   width: 6px;
   height: 6px;
@@ -333,11 +378,11 @@ body {
   background-color: var(--accent-color);
 }
 
-/* 5.2 Clean Minimal Flat Checkbox Vector Square */
+/* Custom Checkbox Square */
 .custom-checkbox-square {
   width: 14px;
   height: 14px;
-  border-radius: 4px; 
+  border-radius: 4px;
   border: 1.5px solid rgba(0, 0, 0, 0.25);
   display: inline-block;
   position: relative;
@@ -345,18 +390,16 @@ body {
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .custom-checkbox-square { 
-  border: 1.5px solid rgba(255, 255, 255, 0.35); 
+[data-theme="dark"] .custom-checkbox-square {
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
 }
 
-.flat-radio-label-node.is-active-node 
-.custom-checkbox-square {
+.flat-radio-label-node.is-active-node .custom-checkbox-square {
   border-color: var(--accent-color);
   background-color: var(--accent-color);
 }
 
-.flat-radio-label-node.is-active-node 
-.custom-checkbox-square::after {
+.flat-radio-label-node.is-active-node .custom-checkbox-square::after {
   content: '';
   position: absolute;
   left: 3.5px;
@@ -375,7 +418,7 @@ body {
 }
 
 /* ==========================================================================
-   6. Solid Primary Full-Width Theme Action Buttons
+   6. Primary Full-Width Action Buttons
    ========================================================================== */
 .flat-btn-row-wrapper {
   margin-top: 4px;
@@ -418,15 +461,10 @@ body {
   height: 15px;
   color: var(--bg-color);
 }
-/* ==========================================================================
-   7. Alert Validation & Disabled Rule Hooks
-   ========================================================================== */
-.row-disabled-state { 
-  opacity: 0.35; pointer-events: none; 
-  filter: grayscale(0.2); 
-}
 
-/* Universal Page Layout System (Shared Across All 5 Main Area Views) */
+/* ==========================================================================
+   7. Universal View Headers, Validation & Status Indicators
+   ========================================================================== */
 .universal-view-header-row {
   display: flex;
   align-items: center;
@@ -459,7 +497,7 @@ body {
 
 .universal-back-arrow-btn:hover {
   opacity: 0.9;
-  transform: translateX(-2px); 
+  transform: translateX(-2px);
 }
 
 .universal-back-arrow-btn:active {
@@ -471,13 +509,6 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.unstyled-data-readout-stream {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
 }
 
 .raw-data-debug-row {
@@ -502,51 +533,6 @@ body {
   color: var(--text-color);
 }
 
-/* SHARED CORE VERTICAL WORKSPACE LAYOUT ENGINE */
-.vertical-stack-form {
-  display: flex !important;
-  flex-direction: column;
-  gap: 18px;
-  width: 100%;
-}
-
-.filter-vertical-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  min-height: 28px;
-  transition: var(--transition-smooth, all 0.3s ease);
-}
-
-.divider-line-container {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  padding: 4px 0;
-}
-
-.horizontal-hairline-divider {
-  display: block;
-  width: 100%;
-  height: 1.5px;
-  background-color: rgba(0, 0, 0, 0.08);
-}
-
-/* SHARED ANIMATION PRIMITIVES */
-.animate-fade-in {
-  animation: globalSubcardFadeIn 0.3s ease-out forwards;
-}
-
-@keyframes globalSubcardFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* INTERACTIVE CHIPS & SELECTION MECHANICS */
-.remove-bottom-gap {
-  margin-bottom: -4px;
-}
-
 .category-selection-required-prompt {
   font-size: 13.5px;
   font-weight: 600;
@@ -559,51 +545,56 @@ body {
   color: rgba(255, 255, 255, 0.4);
 }
 
-.mobile-wrapping-radio-row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 24px;
-  width: 100%;
+/* Shared Animations */
+.animate-fade-in {
+  animation: globalSubcardFadeIn 0.3s ease-out forwards;
 }
 
-@media (max-width: 768px) {
-  .mobile-wrapping-radio-row {
-    flex-wrap: wrap;
-    gap: 12px 20px;
+@keyframes globalSubcardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* INPUT COMPONENT VALIDATION SHAKE ENGINE */
 .shake-error-cue {
   animation: structuralShake 0.45s ease-in-out;
 }
 
 @keyframes structuralShake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-4px); }
-  40%, 80% { transform: translateX(4px); }
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-4px);
+  }
+  40%, 80% {
+    transform: translateX(4px);
+  }
 }
 
-/* GLOBAL FORM VALIDATION HIGHLIGHTERS */
+/* Form Validation Highlighters */
 div.flat-form-field.is-invalid-field {
   border: 1.5px solid #ff3333 !important;
-  box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1), 
-              2px 2px 6px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1),
+    2px 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
 
-.borderless-flat-radio-row.is-invalid-field 
-.flat-radio-label-node {
+.borderless-flat-radio-row.is-invalid-field .flat-radio-label-node {
   border: 1.5px solid #ff3333 !important;
   border-radius: 8px;
   padding: 4px 12px;
   transition: border-color 0.2s ease;
 }
 
-/* Dynamic Multi-line textarea container highlight */
 div.flat-textarea-container.is-invalid-textarea {
   border: 1.5px solid #ff3333 !important;
-  box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1), 
-              2px 2px 6px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1),
+    2px 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
 
 .flat-error-descriptor-text {
@@ -614,7 +605,7 @@ div.flat-textarea-container.is-invalid-textarea {
   letter-spacing: 0.1px;
 }
 
-/* SHARED PLATFORM NEOMORPHIC INFRASTRUCTURE: DOT INDICATORS */
+/* Status & Step Dot Indicators */
 .universal-status-dot {
   width: 10px;
   height: 10px;
@@ -624,21 +615,19 @@ div.flat-textarea-container.is-invalid-textarea {
   transition: background-color var(--transition-smooth);
 }
 
-.dot-brand-blue   { background-color: #0076df; }
+.dot-brand-blue { background-color: #0076df; }
 .dot-brand-orange { background-color: #ff7b00; }
-.dot-brand-gold   { background-color: #ffd71a; }
-.dot-brand-green  { background-color: #2ecc71; }
+.dot-brand-gold { background-color: #ffd71a; }
+.dot-brand-green { background-color: #2ecc71; }
 .dot-brand-purple { background-color: #9b59b6; }
-.dot-brand-teal   { background-color: #1abc9c; }
-.dot-brand-red    { background-color: #e74c3c; }
-.dot-brand-muted  { background-color: #cbd5e1 !important; }
-.text-brand-muted { color: #94a3b8 !important; }
-  
-.universal-status-dot.is-matt-disabled {
-  opacity: 0.28 !important;   
-  filter: saturate(0.4) contrast(0.95); 
-}
+.dot-brand-teal { background-color: #1abc9c; }
+.dot-brand-red { background-color: #e74c3c; }
+.dot-brand-muted { background-color: #cbd5e1 !important; }
 
+.universal-status-dot.is-matt-disabled {
+  opacity: 0.28 !important;
+  filter: saturate(0.4) contrast(0.95);
+}
 /* ==========================================================================
    8. Shared 3-Column Action & Media Tile Grid System (Step 3 & Step 7)
    ========================================================================== */
@@ -797,4 +786,3 @@ div.flat-textarea-container.is-invalid-textarea {
   color: #ffffff;
   border-color: #ea580c;
 }
-

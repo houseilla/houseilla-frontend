@@ -37,8 +37,6 @@ const getPageTitle = () => {
 }
 </script>
 
-
-
 <template>
     <div class="split-view-master-canvas">
 
@@ -181,8 +179,6 @@ const getPageTitle = () => {
     </div>
 </template>
 
-
-
 <style scoped>
 /* ==========================================================================
    1. Base Core Workspace Layout Constraints
@@ -311,7 +307,6 @@ const getPageTitle = () => {
     flex-direction: column;
 }
 
-/* Forces full page inner sub views to take up 100% of space inside the Main Area boundaries */
 .full-width-main-area-adjust {
     width: 100%;
     height: 100%;
@@ -355,30 +350,6 @@ const getPageTitle = () => {
     align-items: center;
     gap: 16px;
 }
-
-/*
-.action-bullet-indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-.bullet-blue {
-    background-color: #0077b6;
-}
-
-.bullet-orange {
-    background-color: #e67e22;
-}
-
-.bullet-gold {
-    background-color: #f1c40f;
-}
-
-.bullet-green {
-    background-color: #2ecc71;
-}
-*/
 
 .action-row-text-title {
     font-size: 15px;
@@ -480,7 +451,6 @@ const getPageTitle = () => {
 
     .center-menu-column,
     .neomorphic-actions-list-container,
-    .vertical-stack-form,
     .inner-panel-header-row {
         width: 100%;
         max-width: 100%;
