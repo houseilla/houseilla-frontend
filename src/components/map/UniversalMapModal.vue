@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted } from 'vue';
-// @ts-ignore
+import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+interface MapSuggestionItem {
+    label: string;
+    coordinates: [number, number];
+}
 
 const props = withDefaults(defineProps<{
     isOpen: boolean;
@@ -18,16 +23,20 @@ const emit = defineEmits<{
     (e: 'confirm', payload: { latitude: number; longitude: number }): void;
 }>();
 
-const stagedLat = ref<number>(props.latitude || 22.5726);
-const stagedLng = ref<number>(props.longitude || 88.3639);
+const DEFAULT_LAT = 22.5726;
+const DEFAULT_LNG = 88.3639;
+
+const stagedLat = ref<number>(props.latitude || DEFAULT_LAT);
+const stagedLng = ref<number>(props.longitude || DEFAULT_LNG);
 const mapSearchQuery = ref<string>('');
-const searchSuggestions = ref<any[] | null>(null);
+const searchSuggestions = ref<MapSuggestionItem[] | null>(null);
 const isSearching = ref<boolean>(false);
 const showSuggestionsDropdown = ref<boolean>(false);
-let debounceTimeout: any = null;
 
-let mapInstance: any = null;
-let markerInstance: any = null;
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+let searchAbortController: AbortController | null = null;
+let mapInstance: L.Map | null = null;
+let markerInstance: L.Marker | null = null;
 
 const westBengalBounds = L.latLngBounds(
     L.latLng(21.3, 85.8),
@@ -46,7 +55,7 @@ const initializeFreeLeafletMap = () => {
             <circle cx="256" cy="192" r="44" fill="#ffffff" />
           </svg>
         `,
-        iconSize:[32, 32],
+        iconSize:[32,32],
         iconAnchor: [16, 32]
     });
 
@@ -72,6 +81,7 @@ const initializeFreeLeafletMap = () => {
 
     if (!props.readOnly) {
         markerInstance.on('dragend', () => {
+            if (!markerInstance) return;
             const pos = markerInstance.getLatLng();
             if (westBengalBounds.contains(pos)) {
                 stagedLat.value = parseFloat(pos.lat.toFixed(6));
@@ -81,7 +91,8 @@ const initializeFreeLeafletMap = () => {
             }
         });
 
-        mapInstance.on('click', (e: any) => {
+        mapInstance.on('click', (e: L.LeafletMouseEvent) => {
+            if (!markerInstance) return;
             if (westBengalBounds.contains(e.latlng)) {
                 markerInstance.setLatLng(e.latlng);
                 stagedLat.value = parseFloat(e.latlng.lat.toFixed(6));
@@ -99,16 +110,27 @@ const destroyMap = () => {
     }
 };
 
+const resetSearchState = () => {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    if (searchAbortController) searchAbortController.abort();
+    mapSearchQuery.value = '';
+    searchSuggestions.value = null;
+    showSuggestionsDropdown.value = false;
+    isSearching.value = false;
+};
+
 watch(() => props.isOpen, async (newValue) => {
     document.documentElement.style.overflow = newValue ? 'hidden' : '';
     document.body.style.overflow = newValue ? 'hidden' : '';
 
     if (newValue) {
-        stagedLat.value = props.latitude || 22.5726;
-        stagedLng.value = props.longitude || 88.3639;
+        resetSearchState();
+        stagedLat.value = props.latitude || DEFAULT_LAT;
+        stagedLng.value = props.longitude || DEFAULT_LNG;
         await nextTick();
         initializeFreeLeafletMap();
     } else {
+        resetSearchState();
         destroyMap();
     }
 }, { immediate: true });
@@ -116,13 +138,14 @@ watch(() => props.isOpen, async (newValue) => {
 onUnmounted(() => {
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
+    resetSearchState();
     destroyMap();
 });
 
 const handleMapAddressSearchQuery = () => {
-    
     showSuggestionsDropdown.value = false;
     const inputString = mapSearchQuery.value.trim();
+
     if (inputString.length < 3) {
         searchSuggestions.value = null;
         return;
@@ -130,33 +153,42 @@ const handleMapAddressSearchQuery = () => {
 
     if (debounceTimeout) clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(async () => {
+        if (searchAbortController) searchAbortController.abort();
+        searchAbortController = new AbortController();
         isSearching.value = true;
+
         try {
             const optimizedQuery = `${inputString}, West Bengal`;
-            const biasQueryUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(optimizedQuery)}&limit=10`;
-            const response = await fetch(biasQueryUrl);
-            const data = await response.json();
+            const response = await axios.get('https://photon.komoot.io/api/', {
+                params: { q: optimizedQuery, limit: 10 },
+                signal: searchAbortController.signal
+            });
 
-            if (data && data.features) {
-                searchSuggestions.value = data.features.map((feature: any) => {
-                    const propsData = feature.properties;
+            const features = response.data?.features;
+            if (Array.isArray(features)) {
+                searchSuggestions.value = features.map((feature: any) => {
+                    const propsData = feature.properties || {};
                     return {
-                        label: [propsData.name, propsData.city || propsData.district, propsData.state || ''].filter(Boolean).join(', '),
+                        label: [propsData.name, propsData.city || propsData.district, propsData.state || '']
+                            .filter(Boolean)
+                            .join(', '),
                         coordinates: feature.geometry.coordinates
                     };
                 });
                 showSuggestionsDropdown.value = (searchSuggestions.value?.length ?? 0) > 0;
             }
-        } catch (error) {
-            console.error('Lookup faulted:', error);
-            searchSuggestions.value = null;
+        } catch (error: any) {
+            if (!axios.isCancel(error)) {
+                console.error('Map address lookup failed:', error);
+                searchSuggestions.value = null;
+            }
         } finally {
             isSearching.value = false;
         }
     }, 350);
 };
 
-const handleSelectSuggestionItem = (item: any) => {
+const handleSelectSuggestionItem = (item: MapSuggestionItem) => {
     mapSearchQuery.value = item.label;
     if (item.coordinates && item.coordinates.length === 2) {
         const [lon, lat] = item.coordinates;
@@ -176,6 +208,7 @@ const handleConfirmSelection = () => {
     emit('confirm', { latitude: stagedLat.value, longitude: stagedLng.value });
 };
 </script>
+
 
 <template>
     <Teleport to="body">
@@ -219,10 +252,8 @@ const handleConfirmSelection = () => {
     </Teleport>
 </template>
 
+
 <style scoped>
-/* =====================================================================
-   1. EDGE-TO-EDGE ABSOLUTE SCREEN POPUP OVERLAY LAYOUTS
-   ===================================================================== */
 .fullscreen-map-popup-overlay {
     position: fixed;
     inset: 0;
@@ -242,9 +273,6 @@ const handleConfirmSelection = () => {
     z-index: 1;
 }
 
-/* =====================================================================
-   2. FLOATING TOP HUD CONTROL PANEL
-   ===================================================================== */
 .top-floating-hud-row {
     position: absolute;
     top: 20px;
@@ -318,9 +346,6 @@ const handleConfirmSelection = () => {
     background-color: #27ae60;
 }
 
-/* =====================================================================
-   3. RED ACTION CLOSE TRIGGER BUTTON
-   ===================================================================== */
 .hud-close-icon-only-trigger {
     display: inline-flex;
     align-items: center;
@@ -350,9 +375,6 @@ const handleConfirmSelection = () => {
     transform: scale(0.96);
 }
 
-/* =====================================================================
-   4. AUTOCOMPLETE RECOMMENDATIONS POPOVER PANEL
-   ===================================================================== */
 .autocomplete-popover-dropdown {
     position: absolute;
     top: calc(100% + 6px);
@@ -386,9 +408,6 @@ const handleConfirmSelection = () => {
     border: none !important;
 }
 
-/* =====================================================================
-   5. MOBILE HUD LAYOUT QUERIES
-   ===================================================================== */
 @media (max-width: 640px) {
     .top-floating-hud-row {
         top: 12px;
@@ -418,4 +437,5 @@ const handleConfirmSelection = () => {
     }
 }
 </style>
+
 

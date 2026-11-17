@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { advertisementService } from '../../../services/advertisementService';
-import {
-    SessionKey,
-    BUILDING_AREA_UNIT_OPTIONS,
-    OFFICE_FURNISHED_OPTIONS
-} from '../../../models/sellWizardEnums';
-import type { Advertisement, OfficeDetail } from '../../../models/advertisement';
+import { advertisementService } from '../../../../../services/advertisementService';
+import { SessionKey, BUILDING_AREA_UNIT_OPTIONS } from '../../../../../models/sellWizardEnums';
+import type { Advertisement, WarehouseDetail } from '../../../../../models/advertisement';
 
 const emit = defineEmits<{
-    (e: 'details-completed', payload: OfficeDetail): void;
+    (e: 'details-completed', payload: WarehouseDetail): void;
 }>();
 
 const advertisementId = ref<number>(0);
-const officeDetailId = ref<number>(0);
+const warehouseDetailId = ref<number>(0);
 
-const localFloorNo = ref<number | null>(null);
 const localAreaValue = ref<number | null>(null);
 const localAreaUnit = ref<number>(1);
-const localFurnishedType = ref<string>('Semi-Furnished');
 
 const validationError = ref<boolean>(false);
 const errorMessage = ref<string>('');
@@ -33,11 +27,9 @@ onMounted(() => {
 
     const cachedDetails = sessionStorage.getItem(SessionKey.PROPERTY_DETAILS);
     if (cachedDetails) {
-        const parsedDetails: OfficeDetail = JSON.parse(cachedDetails);
+        const parsedDetails: WarehouseDetail = JSON.parse(cachedDetails);
         if (parsedDetails.advertisementId === advertisementId.value) {
-            officeDetailId.value = parsedDetails.id || 0;
-            localFloorNo.value = parsedDetails.floorNo ?? null;
-            localFurnishedType.value = parsedDetails.furnishedType || 'Semi-Furnished';
+            warehouseDetailId.value = parsedDetails.id || 0;
 
             if (parsedDetails.area && parsedDetails.area > 0) {
                 localAreaUnit.value = 1;
@@ -58,7 +50,7 @@ const formattedSqFtReadout = computed<string>(() => {
     return `${total.toLocaleString('en-IN')} Sq. Ft.`;
 });
 
-const handleSaveOfficeDetails = async () => {
+const handleSaveWarehouseDetails = async () => {
     validationError.value = false;
     errorMessage.value = '';
 
@@ -70,37 +62,23 @@ const handleSaveOfficeDetails = async () => {
 
     if (!localAreaValue.value || localAreaValue.value <= 0 || computedTotalSqFt.value <= 0) {
         validationError.value = true;
-        errorMessage.value = 'Please enter a valid office area.';
+        errorMessage.value = 'Please enter a valid warehouse / godown area.';
         return;
     }
 
-    if (localFloorNo.value === null || localFloorNo.value < 0) {
-        validationError.value = true;
-        errorMessage.value = 'Please enter a valid floor number (0 for Ground Floor).';
-        return;
-    }
-
-    if (!localFurnishedType.value) {
-        validationError.value = true;
-        errorMessage.value = 'Please select the office furnishing status.';
-        return;
-    }
-
-    const payload: OfficeDetail = {
-        id: officeDetailId.value,
+    const payload: WarehouseDetail = {
+        id: warehouseDetailId.value,
         advertisementId: advertisementId.value,
-        floorNo: localFloorNo.value,
-        area: computedTotalSqFt.value,
-        furnishedType: localFurnishedType.value
+        area: computedTotalSqFt.value
     };
 
     isSubmitting.value = true;
     try {
-        const savedRecord = await advertisementService.saveOfficeDetail(payload);
+        const savedRecord = await advertisementService.saveWarehouseDetail(payload);
         emit('details-completed', savedRecord);
     } catch (error: any) {
         validationError.value = true;
-        errorMessage.value = error.response?.data?.message || 'Failed to save office specifications. Please try again.';
+        errorMessage.value = error.response?.data?.message || 'Failed to save warehouse specifications. Please try again.';
     } finally {
         isSubmitting.value = false;
     }
@@ -110,7 +88,7 @@ const handleSaveOfficeDetails = async () => {
 <template>
     <div class="vertical-stack-form animate-fade-in">
 
-        <!-- ROW 1: OFFICE AREA -->
+        <!-- ROW 1: WAREHOUSE AREA -->
         <div class="vertical-input-group">
             <div class="split-field-flex-wrapper">
                 <div class="flat-form-field split-primary-flex-cell"
@@ -122,8 +100,8 @@ const handleSaveOfficeDetails = async () => {
                         <line x1="9" y1="21" x2="9" y2="9"></line>
                     </svg>
                     <div class="flat-field-labeled-stack">
-                        <span class="flat-field-top-label">Office Carpet / Built-up Area</span>
-                        <input type="number" class="flat-raw-input" placeholder="e.g. 1500"
+                        <span class="flat-field-top-label">Warehouse / Godown Covered Area</span>
+                        <input type="number" class="flat-raw-input" placeholder="e.g. 5000"
                             v-model.number="localAreaValue" min="1" step="any" />
                     </div>
                 </div>
@@ -146,37 +124,8 @@ const handleSaveOfficeDetails = async () => {
             </div>
 
             <span v-if="formattedSqFtReadout" class="live-conversion-readout animate-fade-in">
-                Standardized Office Area: <strong>{{ formattedSqFtReadout }}</strong>
+                Standardized Warehouse Area: <strong>{{ formattedSqFtReadout }}</strong>
             </span>
-        </div>
-
-        <div class="divider-line-container"><span class="horizontal-hairline-divider"></span></div>
-
-        <!-- ROW 2: FLOOR NUMBER -->
-        <div class="flat-form-field"
-            :class="{ 'is-invalid-field': validationError && (localFloorNo === null || localFloorNo < 0) }">
-            <div class="flat-field-labeled-stack no-icon">
-                <span class="flat-field-top-label">Floor Number (0 = Ground Floor)</span>
-                <input type="number" class="flat-raw-input" placeholder="e.g. 4"
-                    v-model.number="localFloorNo" min="0" />
-            </div>
-        </div>
-
-        <div class="divider-line-container"><span class="horizontal-hairline-divider"></span></div>
-
-        <!-- ROW 3: FURNISHED TYPE -->
-        <div>
-            <span class="flat-section-caption-label">Furnishing Status</span>
-            <div class="borderless-flat-radio-row mobile-wrapping-radio-row"
-                :class="{ 'is-invalid-field': validationError && !localFurnishedType }">
-                <label v-for="option in OFFICE_FURNISHED_OPTIONS" :key="option" class="flat-radio-label-node"
-                    :class="{ 'is-active-node': localFurnishedType === option }">
-                    <input type="radio" name="officeFurnishedGroup" :value="option" v-model="localFurnishedType"
-                        class="hidden-radio-input" />
-                    <span class="custom-radio-dot"></span>
-                    <span class="label-caption-string">{{ option }}</span>
-                </label>
-            </div>
         </div>
 
         <!-- VALIDATION ERROR -->
@@ -190,7 +139,7 @@ const handleSaveOfficeDetails = async () => {
 
         <!-- SUBMIT BUTTON -->
         <div class="flat-btn-row-wrapper">
-            <button @click="handleSaveOfficeDetails" :disabled="isSubmitting" class="flat-full-width-action-btn"
+            <button @click="handleSaveWarehouseDetails" :disabled="isSubmitting" class="flat-full-width-action-btn"
                 type="button">
                 <svg class="flat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -198,7 +147,7 @@ const handleSaveOfficeDetails = async () => {
                     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2h11"></path>
                 </svg>
                 <span class="btn-label-text">
-                    {{ isSubmitting ? 'Saving Office Specifications...' : 'Save & Proceed to Media' }}
+                    {{ isSubmitting ? 'Saving Warehouse Specifications...' : 'Save & Proceed to Media' }}
                 </span>
             </button>
         </div>

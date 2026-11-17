@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterView } from 'vue-router'
-import AppHeader from './views/AppHeader.vue'
-import AppFooter from './views/AppFooter.vue'
+import AppHeader from './components/layout/AppHeader.vue'
+import AppFooter from './components/layout/AppFooter.vue'
+
 
 const isRefreshing = ref(false)
 const pullDistance = ref(0)

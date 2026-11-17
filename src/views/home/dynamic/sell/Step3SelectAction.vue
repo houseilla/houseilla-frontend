@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { SessionKey } from '../../models/sellWizardEnums';
-import { advertisementService } from '../../services/advertisementService';
-import type { Advertisement } from '../../models/advertisement';
+import { SessionKey } from '../../../../models/sellWizardEnums';
+import { advertisementService } from '../../../../services/advertisementService';
+import type { Advertisement } from '../../../../models/advertisement';
 import {
     AdvertisementPropertyType,
     AdvertisementPurpose,
@@ -10,7 +10,7 @@ import {
     getPropertyTypeLabel,
     AdvertisementPurposeLabels,
     getAdvertisementStatusLabel
-} from '../../models/advertisementEnums';
+} from '../../../../models/advertisementEnums';
 
 const emit = defineEmits<{
     (e: 'action-selected', payload: { mode: 'NEW' | 'EXISTING'; advertisement: Advertisement | null }): void;

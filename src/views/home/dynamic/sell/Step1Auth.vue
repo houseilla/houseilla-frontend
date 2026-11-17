@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { authService } from '../../services/authService';
-import { SessionKey } from '../../models/sellWizardEnums.ts';
-import type { OtpRequest } from '../../models/auth';
-import type { Advertiser } from '../../models/advertisement';
+import { authService } from '../../../../services/authService.ts';
+import { SessionKey } from '../../../../models/sellWizardEnums.ts';
+import type { OtpRequest } from '../../../../models/auth.ts';
+import type { Advertiser } from '../../../../models/advertisement.ts';
 
 const emit = defineEmits<{
     (e: 'auth-completed', payload: { advertiser: Advertiser; token: string }): void;

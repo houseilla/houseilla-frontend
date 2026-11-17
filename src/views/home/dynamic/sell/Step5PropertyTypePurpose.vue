@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { advertisementService } from '../../services/advertisementService';
-import { AdvertisementPurpose, AdvertisementCategory } from '../../models/advertisementEnums';
+import { advertisementService } from '../../../../services/advertisementService';
+import { AdvertisementPurpose, AdvertisementCategory } from '../../../../models/advertisementEnums';
 import {
     SessionKey,
     PURPOSE_OPTIONS,
@@ -9,7 +9,7 @@ import {
     PRIVATE_SUBTYPE_OPTIONS,
     COMMERCIAL_SUBTYPE_OPTIONS,
     PRICING_UNIT_OPTIONS
-} from '../../models/sellWizardEnums';
+} from '../../../../models/sellWizardEnums';
 import type { Advertisement } from '@/models/advertisement';
 
 const emit = defineEmits<{

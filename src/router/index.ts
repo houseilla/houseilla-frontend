@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue' // Imports your new middle section
+import HomeView from '../views/home/HomeView.vue' // Imports your new middle section
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

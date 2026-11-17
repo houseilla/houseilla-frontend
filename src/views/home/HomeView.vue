@@ -1,69 +1,27 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 
-// Import Sub-View Shell Components
-import AboutView from '../views/AboutView.vue'
-import ContactView from '../views/ContactView.vue'
-import ServicesView from '../views/ServicesView.vue'
-import BlogView from '../views/BlogView.vue'
-import BuyPropertyView from '../views/BuyPropertyView.vue'
-import SellPropertyView from '../views/SellPropertyView.vue'
-import PremiumPortfolioView from '../views/PremiumPortfolioView.vue'
-import VerifiedHubView from '../views/VerifiedHubView.vue' 
-import PropertyListingView from '../views/PropertyListingView.vue'
+// Import Static Sub-View Shell Components
+import AboutView from './static/AboutView.vue'
+import ContactView from './static/ContactView.vue'
+import ServicesView from './static/ServicesView.vue'
+import BlogView from './static/BlogView.vue'
 
-// 1. Injects your upcoming new standalone details sub-view page module
-import PropertyDetailsView from '../views/PropertyDetailsView.vue'
+// Import Dynamic Sub-View Shell Components
+import BuyPropertyView from './dynamic/BuyPropertyView.vue'
+import SellPropertyView from './dynamic/SellPropertyView.vue'
+import PremiumPortfolioView from './dynamic/PremiumPortfolioView.vue'
+import VerifiedHubView from './dynamic/VerifiedHubView.vue'
 
-// Import strict data type interfaces
-import type { Advertisement } from '../models/advertisement'
-
-// Navigation Engine Router State Matrix (Added 'details' state option)
+// Navigation Engine Router State Matrix (9 active views)
 const currentViewState = ref<'home' | 'about' | 'services' | 'contact'
-    | 'blog' | 'buy' | 'sell' | 'premium' | 'verified' | 'listings' | 'details'>('home')
-const buyViewRef = ref<InstanceType<typeof BuyPropertyView> | null>(null)
 
-// Shared Reactive Results Data Containers
-const globalFilteredAdvertisementsList = ref<Advertisement[]>([])
-const activeSelectedAdvertisement = ref<Advertisement | null>(null)
+    | 'blog' | 'buy' | 'sell' | 'premium' | 'verified'>('home')
 
-/**
- * Changes active layout views
- */
 const setViewState = (state: typeof currentViewState.value) => {
     currentViewState.value = state
 }
 
-/**
- * Triggered by the child form when data is filtered successfully
- */
-const handleSearchExecutionSuccess = (results: Advertisement[]) => {
-    globalFilteredAdvertisementsList.value = results
-    setViewState('listings')
-}
-
-/**
- * NEW ROUTING TRIGGER: Intercepts property card choice click, 
- * buffers data payload, and opens full-width details view canvas inline
- */
-const handlePropertyCardSelection = (selectedAd: Advertisement) => {
-    activeSelectedAdvertisement.value = selectedAd
-    setViewState('details')
-}
-
-/**
- * Toggles Buy Property state view and targets field autofocus triggers
- */
-const handleBuyPropertyClick = () => {
-    setViewState('buy')
-    nextTick(() => {
-        buyViewRef.value?.focusInput()
-    })
-}
-
-/**
- * Maps readable header title string labels for the sub-view dashboard panels
- */
 const getPageTitle = () => {
     switch (currentViewState.value) {
         case 'buy': return 'Buy Property'
@@ -74,12 +32,12 @@ const getPageTitle = () => {
         case 'services': return 'Our Services'
         case 'contact': return 'Contact Us'
         case 'blog': return 'Blog Dock'
-        case 'listings': return 'Property Listings'
-        case 'details': return 'Property Details Profile'
         default: return ''
     }
 }
 </script>
+
+
 
 <template>
     <div class="split-view-master-canvas">
@@ -99,7 +57,7 @@ const getPageTitle = () => {
             <Transition name="slide-horizontal" mode="out-in">
 
                 <!-- CONDITION 1: Render Baseline Split Dashboard Grid -->
-                <div v-if="!['about', 'contact', 'services', 'blog', 'listings', 'details'].includes(currentViewState)"
+                <div v-if="!['about', 'contact', 'services', 'blog'].includes(currentViewState)"
                     class="sketch-dashboard-grid" key="dashboard">
 
                     <div class="mascot-column-wrapper">
@@ -113,11 +71,8 @@ const getPageTitle = () => {
                                 <h2 class="neomorphic-panel-title">Explore Houseilla</h2>
                                 <div class="neomorphic-actions-list-container shadow-clipping-safe-zone">
 
-                                    <div @click="handleBuyPropertyClick" class="neo-action-card-button">
+                                    <div @click="setViewState('buy')" class="neo-action-card-button">
                                         <span class="card-left-content">
-                                            <!--
-                                            <span class="action-bullet-indicator bullet-blue"></span>
-                                            -->
                                             <span class="universal-status-dot dot-brand-blue"></span>
                                             <span class="action-row-text-title">Buy Property</span>
                                         </span>
@@ -129,9 +84,6 @@ const getPageTitle = () => {
 
                                     <div @click="setViewState('sell')" class="neo-action-card-button">
                                         <span class="card-left-content">
-                                            <!--
-                                            <span class="action-bullet-indicator bullet-orange"></span>
-                                            -->
                                             <span class="universal-status-dot dot-brand-orange"></span>
                                             <span class="action-row-text-title">Sell Property</span>
                                         </span>
@@ -143,9 +95,6 @@ const getPageTitle = () => {
 
                                     <div @click="setViewState('premium')" class="neo-action-card-button">
                                         <span class="card-left-content">
-                                            <!--
-                                            <span class="action-bullet-indicator bullet-gold"></span>
-                                            -->
                                             <span class="universal-status-dot dot-brand-gold"></span>
                                             <span class="action-row-text-title">Premium Property Portfolio</span>
                                         </span>
@@ -157,9 +106,6 @@ const getPageTitle = () => {
 
                                     <div @click="setViewState('verified')" class="neo-action-card-button">
                                         <span class="card-left-content">
-                                            <!--
-                                            <span class="action-bullet-indicator bullet-green"></span>
-                                            -->
                                             <span class="universal-status-dot dot-brand-green"></span>
                                             <span class="action-row-text-title">Verified Property Hub</span>
                                         </span>
@@ -187,8 +133,7 @@ const getPageTitle = () => {
                                     </button>
                                 </div>
 
-                                <BuyPropertyView v-if="currentViewState === 'buy'" ref="buyViewRef"
-                                    @on-search-success="handleSearchExecutionSuccess" />
+                                <BuyPropertyView v-if="currentViewState === 'buy'" />
                                 <SellPropertyView v-else-if="currentViewState === 'sell'" />
                                 <PremiumPortfolioView v-else-if="currentViewState === 'premium'" />
                                 <VerifiedHubView v-else-if="currentViewState === 'verified'" />
@@ -198,15 +143,13 @@ const getPageTitle = () => {
                     </div>
                 </div>
 
-                <!-- CONDITION 2 & SKETCH 4 COMPLIANCE: Standalone page containers inside the Main Area -->
+                <!-- CONDITION 2: Standalone page containers inside the Main Area -->
                 <div v-else class="menu-view-slide-wrapper full-width-main-area-adjust" :key="currentViewState">
 
                     <!-- Universal Header structure driven natively by main.css global tokens -->
                     <div class="universal-view-header-row">
                         <h2 class="universal-view-main-title">{{ getPageTitle() }}</h2>
-                        <button
-                            @click="currentViewState === 'listings' ? setViewState('buy') : (currentViewState === 'details' ? setViewState('listings') : setViewState('home'))"
-                            class="universal-back-arrow-btn" type="button">
+                        <button @click="setViewState('home')" class="universal-back-arrow-btn" type="button">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -220,15 +163,6 @@ const getPageTitle = () => {
                     <ContactView v-else-if="currentViewState === 'contact'" />
                     <ServicesView v-if="currentViewState === 'services'" />
                     <BlogView v-else-if="currentViewState === 'blog'" />
-
-                    <!-- Listings page listening to card choice selections -->
-                    <PropertyListingView v-else-if="currentViewState === 'listings'"
-                        :advertisements="globalFilteredAdvertisementsList"
-                        @on-card-click="handlePropertyCardSelection" />
-
-                    <!-- Brand new dedicated full width details profile component injector -->
-                    <PropertyDetailsView v-else-if="currentViewState === 'details' && activeSelectedAdvertisement"
-                        :advertisement="activeSelectedAdvertisement" />
                 </div>
 
             </Transition>
@@ -246,6 +180,7 @@ const getPageTitle = () => {
 
     </div>
 </template>
+
 
 
 <style scoped>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { SessionKey } from '../../models/sellWizardEnums';
-import { AdvertisementPropertyType, AdvertisementPropertyTypeLabels } from '../../models/advertisementEnums';
+import { SessionKey } from '../../../../models/sellWizardEnums.ts';
+import { AdvertisementPropertyType, AdvertisementPropertyTypeLabels } from '../../../../models/advertisementEnums.ts';
 import type {
     Advertisement,
     LandDetail,
@@ -10,7 +10,7 @@ import type {
     OfficeDetail,
     ShopDetail,
     WarehouseDetail
-} from '../../models/advertisement';
+} from '../../../../models/advertisement.ts';
 import LandDetailsForm from './details/LandDetailsForm.vue';
 import FlatDetailsForm from './details/FlatDetailsForm.vue';
 import HouseDetailsForm from './details/HouseDetailsForm.vue';

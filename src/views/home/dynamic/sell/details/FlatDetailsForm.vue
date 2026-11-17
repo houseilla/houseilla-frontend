@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { advertisementService } from '../../../services/advertisementService';
+import { advertisementService } from '../../../../../services/advertisementService';
 import {
     SessionKey,
     BUILDING_AREA_UNIT_OPTIONS,
     FLAT_BHK_OPTIONS,
     FLAT_AMENITY_OPTIONS
-} from '../../../models/sellWizardEnums';
-import type { Advertisement, FlatDetail } from '../../../models/advertisement';
+} from '../../../../../models/sellWizardEnums';
+import type { Advertisement, FlatDetail } from '../../../../../models/advertisement';
 
 const emit = defineEmits<{
     (e: 'details-completed', payload: FlatDetail): void;

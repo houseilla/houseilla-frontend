@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { advertisementService } from '../../../services/advertisementService';
+import { advertisementService } from '../../../../../services/advertisementService';
 import {
     SessionKey,
     LAND_AREA_UNIT_OPTIONS,
     BUILDING_AREA_UNIT_OPTIONS,
     ROAD_FACING_OPTIONS
-} from '../../../models/sellWizardEnums';
-import type { Advertisement, HouseDetail } from '../../../models/advertisement';
+} from '../../../../../models/sellWizardEnums';
+import type { Advertisement, HouseDetail } from '../../../../../models/advertisement';
 
 const emit = defineEmits<{
     (e: 'details-completed', payload: HouseDetail): void;

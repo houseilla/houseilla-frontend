@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { advertiserService } from '../../services/advertiserService';
-import { SessionKey } from '../../models/sellWizardEnums.ts';
-import type { Advertiser } from '../../models/advertisement';
-import { AdvertiserType, getAdvertiserTypeLabel } from '../../models/advertisementEnums';
+import { advertiserService } from '../../../../services/advertiserService.ts';
+import { SessionKey } from '../../../../models/sellWizardEnums.ts';
+import type { Advertiser } from '../../../../models/advertisement.ts';
+import { AdvertiserType, getAdvertiserTypeLabel } from '../../../../models/advertisementEnums.ts';
 
 const emit = defineEmits<{
     (e: 'profile-completed', updatedAdvertiser: Advertiser): void;

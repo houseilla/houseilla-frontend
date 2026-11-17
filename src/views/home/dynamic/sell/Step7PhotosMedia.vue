@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { advertisementService } from '../../services/advertisementService';
-import { SessionKey } from '../../models/sellWizardEnums';
+import { advertisementService } from '../../../../services/advertisementService';
+import { SessionKey } from '../../../../models/sellWizardEnums';
 import {
     AdvertisementStatus,
     getPropertyTypeLabel,
     AdvertisementPurposeLabels
-} from '../../models/advertisementEnums';
-import type { Advertisement, AdvertisementImage } from '../../models/advertisement';
+} from '../../../../models/advertisementEnums';
+import type { Advertisement, AdvertisementImage } from '../../../../models/advertisement';
 
 interface MediaTileItem {
     localKey: string;

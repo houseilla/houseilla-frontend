@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { SessionKey } from '../../models/sellWizardEnums';
-import type { Advertisement } from '../../models/advertisement';
-import UniversalMapModal from '../UniversalMapModal.vue';
+import { SessionKey } from '../../../../models/sellWizardEnums.ts';
+import type { Advertisement } from '../../../../models/advertisement.ts';
+import UniversalMapModal from '../../../../components/map/UniversalMapModal.vue';
 
 const emit = defineEmits<{
     (e: 'location-completed', payload: Advertisement): void;

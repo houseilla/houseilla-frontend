@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { advertisementService } from '../../../services/advertisementService';
-import { SessionKey, BUILDING_AREA_UNIT_OPTIONS } from '../../../models/sellWizardEnums';
-import type { Advertisement, ShopDetail } from '../../../models/advertisement';
+import { advertisementService } from '../../../../../services/advertisementService';
+import { SessionKey, BUILDING_AREA_UNIT_OPTIONS } from '../../../../../models/sellWizardEnums';
+import type { Advertisement, ShopDetail } from '../../../../../models/advertisement';
 
 const emit = defineEmits<{
     (e: 'details-completed', payload: ShopDetail): void;

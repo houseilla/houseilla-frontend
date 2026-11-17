@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import type { Advertisement, Advertiser } from '../models/advertisement';
-import { SessionKey, WizardStep, WIZARD_STEP_LIST } from '../models/sellWizardEnums';
+import type { Advertisement, Advertiser } from '../../../models/advertisement.ts';
+import { SessionKey, WizardStep, WIZARD_STEP_LIST } from '../../../models/sellWizardEnums.ts';
 import Step1Auth from './sell/Step1Auth.vue';
 import Step2Profile from './sell/Step2Profile.vue';
 import Step3SelectAction from './sell/Step3SelectAction.vue';
