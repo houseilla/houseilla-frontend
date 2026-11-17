@@ -7,7 +7,8 @@ import type {
   HouseDetail,
   OfficeDetail,
   ShopDetail,
-  WarehouseDetail
+  WarehouseDetail,
+  AdvertisementImage
 } from '../models/advertisement';
 
 export const advertisementService = {
@@ -67,5 +68,36 @@ export const advertisementService = {
   async saveWarehouseDetail(payload: WarehouseDetail): Promise<WarehouseDetail> {
     const response = await apiClient.post<WarehouseDetail>(API_ENDPOINTS.PROPERTY_DETAILS_WAREHOUSE, payload);
     return response.data;
-  }
+  },
+
+  async getAdvertisementImages(advertisementId: number): Promise<AdvertisementImage[]> {
+    const response = await apiClient.get<AdvertisementImage[]>(
+      API_ENDPOINTS.ADVERTISEMENT_IMAGES(advertisementId)
+    );
+    return response.data;
+  },
+
+  async uploadAdvertisementImages(
+    advertisementId: number,
+    images: AdvertisementImage[]
+  ): Promise<AdvertisementImage[]> {
+    const response = await apiClient.post<AdvertisementImage[]>(
+      API_ENDPOINTS.ADVERTISEMENT_IMAGES(advertisementId),
+      images
+    );
+    return response.data;
+  },
+
+  async deleteAdvertisementImage(fileId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.DELETE_ADVERTISEMENT_IMAGE(fileId));
+  },
+
+  async updateAdvertisementImageLabel(fileId: number, name: string): Promise<AdvertisementImage> {
+    const response = await apiClient.patch<AdvertisementImage>(
+      API_ENDPOINTS.DELETE_ADVERTISEMENT_IMAGE(fileId),
+      { name }
+    );
+    return response.data;
+  },
+
 };

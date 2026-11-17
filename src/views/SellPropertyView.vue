@@ -8,6 +8,7 @@ import Step3SelectAction from './sell/Step3SelectAction.vue';
 import Step4PropertyLocation from './sell/Step4PropertyLocation.vue';
 import Step5PropertyTypePurpose from './sell/Step5PropertyTypePurpose.vue';
 import Step6PropertyDetails from './sell/Step6PropertyDetails.vue';
+import Step7PhotosMedia from './sell/Step7PhotosMedia.vue';
 
 
 const currentStep = ref<WizardStep>(WizardStep.IDENTIFICATION);
@@ -69,6 +70,15 @@ const handleTypePurposeSuccess = (completedPayload: Advertisement) => {
 const handlePropertyDetailsSuccess = (savedDetails: Record<string, any>) => {
     sessionStorage.setItem(SessionKey.PROPERTY_DETAILS, JSON.stringify(savedDetails));
     advanceToStep(WizardStep.PHOTOS_MEDIA);
+};
+
+const handleStartNewListing = () => {
+    sessionStorage.removeItem(SessionKey.ADVERTISEMENT);
+    sessionStorage.removeItem(SessionKey.PROPERTY_DETAILS);
+    sessionStorage.removeItem(SessionKey.ADVERTISEMENT_OPERATION);
+    advertisementOperation.value = null;
+    currentStep.value = WizardStep.SELECT_ACTION;
+    sessionStorage.setItem(SessionKey.CURRENT_STEP, String(WizardStep.SELECT_ACTION));
 };
 
 const selectCustomStep = (targetStepId: WizardStep) => {
@@ -206,13 +216,8 @@ onUnmounted(() => {
         @details-completed="handlePropertyDetailsSuccess" />
 
 
-    <!-- DOWNSTREAM STEPS WORKSPACE CANVAS (Step 7) -->
-    <div v-if="currentStep > WizardStep.PROPERTY_DETAILS" class="vertical-stack-form shadow-clipping-safe-zone"
-        style="padding: 24px; background-color: #ffffff; text-align: center;">
-        <h3 class="font-bold text-gray-800" style="font-size: 14px;">
-            Step {{ currentStep }}: {{ WIZARD_STEP_LIST[currentStep - 1]?.label }} Panel Active
-        </h3>
-    </div>
+    <!-- STEP 7 PHOTOS & MEDIA -->
+    <Step7PhotosMedia v-if="currentStep === WizardStep.PHOTOS_MEDIA" @start-new-listing="handleStartNewListing" />
 
 </template>
 

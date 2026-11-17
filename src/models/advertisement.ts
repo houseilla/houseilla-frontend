@@ -12,9 +12,11 @@ export interface Advertiser {
 }
 
 export interface AdvertisementImage {
-  id?: number;
+  fileId?: number;
   advertisementId: number;
-  filePayload: string;
+  name: string;
+  type: string;
+  file?: string;
   base64Data?: string;
 }
 

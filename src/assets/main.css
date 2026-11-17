@@ -638,3 +638,163 @@ div.flat-textarea-container.is-invalid-textarea {
   opacity: 0.28 !important;   
   filter: saturate(0.4) contrast(0.95); 
 }
+
+/* ==========================================================================
+   8. Shared 3-Column Action & Media Tile Grid System (Step 3 & Step 7)
+   ========================================================================== */
+.tiles-three-col-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .tiles-three-col-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tiles-three-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.shared-grid-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+  background-color: var(--bg-color);
+  box-shadow: var(--neomorphic-flat, 0 1px 3px rgba(0, 0, 0, 0.02));
+  transition: var(--transition-smooth, all 0.25s ease);
+}
+
+.shared-grid-tile.is-dashed-add-tile {
+  border: 2px dashed rgba(0, 0, 0, 0.15);
+  justify-content: center;
+  align-items: center;
+}
+
+[data-theme="dark"] .shared-grid-tile.is-dashed-add-tile {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.shared-grid-tile.is-solid-item-tile {
+  border: 1.5px solid rgba(0, 0, 0, 0.09);
+}
+
+[data-theme="dark"] .shared-grid-tile.is-solid-item-tile {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.shared-grid-tile.is-dashed-add-tile:hover,
+.shared-grid-tile.is-solid-item-tile:hover,
+.shared-grid-tile.is-drag-active {
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.shared-grid-tile:active {
+  transform: scale(0.99);
+}
+
+.shared-grid-tile.is-active-tile {
+  border: 2px solid var(--accent-color) !important;
+  background-color: rgba(0, 118, 223, 0.03);
+}
+
+[data-theme="dark"] .shared-grid-tile.is-active-tile {
+  background-color: rgba(0, 118, 223, 0.08);
+}
+
+.shared-grid-tile.is-loading-tile {
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+  opacity: 0.7;
+  border: 1.5px solid rgba(0, 0, 0, 0.09);
+}
+
+.tile-center-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.tile-icon-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background-color: var(--text-color);
+  color: var(--bg-color);
+  opacity: 0.9;
+  transition: var(--transition-smooth);
+}
+
+.tile-icon-avatar.small-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.shared-grid-tile.is-active-tile .tile-icon-avatar,
+.shared-grid-tile:hover .tile-icon-avatar {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  opacity: 1;
+}
+
+.tile-main-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.tile-sub-caption {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.55;
+}
+
+.line-clamp-1 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-delete-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid rgba(234, 88, 12, 0.25);
+  background-color: rgba(255, 255, 255, 0.92);
+  color: #ea580c;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-smooth);
+}
+
+[data-theme="dark"] .card-delete-icon-btn {
+  background-color: rgba(26, 34, 45, 0.92);
+}
+
+.card-delete-icon-btn:hover {
+  background-color: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+}
+

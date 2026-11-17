@@ -9,7 +9,7 @@ import BlogView from '../views/BlogView.vue'
 import BuyPropertyView from '../views/BuyPropertyView.vue'
 import SellPropertyView from '../views/SellPropertyView.vue'
 import PremiumPortfolioView from '../views/PremiumPortfolioView.vue'
-import VerifiedHubView from '../views/VerifiedHubView.vue'
+import VerifiedHubView from '../views/VerifiedHubView.vue' 
 import PropertyListingView from '../views/PropertyListingView.vue'
 
 // 1. Injects your upcoming new standalone details sub-view page module
