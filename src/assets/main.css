@@ -207,7 +207,6 @@ body {
   user-select: none;
 }
 
-/* Split Inputs, Multi-Column Grids & Live Readouts */
 .split-field-flex-wrapper {
   display: flex;
   gap: 16px;
@@ -255,7 +254,6 @@ body {
   padding-left: 4px;
 }
 
-/* Multi-line Description Textarea */
 .flat-textarea-container {
   position: relative;
   width: 100%;
@@ -303,6 +301,7 @@ body {
   opacity: 0.4;
   user-select: none;
 }
+
 /* ==========================================================================
    5. Flat Binary Selection Components (Radio Buttons & Checkboxes)
    ========================================================================== */
@@ -346,7 +345,6 @@ body {
   display: none;
 }
 
-/* Custom Radio Circle */
 .custom-radio-dot {
   width: 14px;
   height: 14px;
@@ -378,7 +376,6 @@ body {
   background-color: var(--accent-color);
 }
 
-/* Custom Checkbox Square */
 .custom-checkbox-square {
   width: 14px;
   height: 14px;
@@ -545,7 +542,6 @@ body {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Shared Animations */
 .animate-fade-in {
   animation: globalSubcardFadeIn 0.3s ease-out forwards;
 }
@@ -555,6 +551,7 @@ body {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -566,18 +563,23 @@ body {
 }
 
 @keyframes structuralShake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0);
   }
-  20%, 60% {
+
+  20%,
+  60% {
     transform: translateX(-4px);
   }
-  40%, 80% {
+
+  40%,
+  80% {
     transform: translateX(4px);
   }
 }
 
-/* Form Validation Highlighters */
 div.flat-form-field.is-invalid-field {
   border: 1.5px solid #ff3333 !important;
   box-shadow: inset 1px 1px 3px rgba(255, 51, 51, 0.1),
@@ -605,7 +607,6 @@ div.flat-textarea-container.is-invalid-textarea {
   letter-spacing: 0.1px;
 }
 
-/* Status & Step Dot Indicators */
 .universal-status-dot {
   width: 10px;
   height: 10px;
@@ -615,19 +616,43 @@ div.flat-textarea-container.is-invalid-textarea {
   transition: background-color var(--transition-smooth);
 }
 
-.dot-brand-blue { background-color: #0076df; }
-.dot-brand-orange { background-color: #ff7b00; }
-.dot-brand-gold { background-color: #ffd71a; }
-.dot-brand-green { background-color: #2ecc71; }
-.dot-brand-purple { background-color: #9b59b6; }
-.dot-brand-teal { background-color: #1abc9c; }
-.dot-brand-red { background-color: #e74c3c; }
-.dot-brand-muted { background-color: #cbd5e1 !important; }
+.dot-brand-blue {
+  background-color: #0076df;
+}
+
+.dot-brand-orange {
+  background-color: #ff7b00;
+}
+
+.dot-brand-gold {
+  background-color: #ffd71a;
+}
+
+.dot-brand-green {
+  background-color: #2ecc71;
+}
+
+.dot-brand-purple {
+  background-color: #9b59b6;
+}
+
+.dot-brand-teal {
+  background-color: #1abc9c;
+}
+
+.dot-brand-red {
+  background-color: #e74c3c;
+}
+
+.dot-brand-muted {
+  background-color: #cbd5e1 !important;
+}
 
 .universal-status-dot.is-matt-disabled {
   opacity: 0.28 !important;
   filter: saturate(0.4) contrast(0.95);
 }
+
 /* ==========================================================================
    8. Shared 3-Column Action & Media Tile Grid System (Step 3 & Step 7)
    ========================================================================== */
@@ -785,4 +810,250 @@ div.flat-textarea-container.is-invalid-textarea {
   background-color: #ea580c;
   color: #ffffff;
   border-color: #ea580c;
+}
+
+/* ==========================================================================
+   9. Shared 6-Column Property Listing Cards & Pagination System
+   ========================================================================== */
+.listings-page-shell {
+  width: 100%;
+  min-height: calc(100vh - 140px);
+  padding: 36px 40px;
+  background-color: var(--bg-color);
+  transition: var(--transition-smooth);
+}
+
+.listings-inner-container {
+  max-width: 1320px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.listings-subtitle-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-color);
+  opacity: 0.55;
+  margin-top: 4px;
+}
+
+.active-filters-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.filter-chip-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background-color: rgba(0, 118, 223, 0.08);
+  color: var(--accent-color);
+}
+
+.listings-status-box {
+  padding: 48px 24px;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 14px;
+  background-color: var(--bg-color);
+  box-shadow: var(--neomorphic-flat);
+  color: var(--text-color);
+}
+
+.listings-status-box.is-error-box {
+  color: #ff3333;
+}
+
+/* Compact 6-Column Grid (2 rows x 6 = 12 cards per page) */
+.tiles-six-col-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+@media (max-width: 1280px) {
+  .tiles-six-col-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .tiles-six-col-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tiles-six-col-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 400px) {
+  .tiles-six-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.property-result-card {
+  overflow: hidden;
+  justify-content: flex-start;
+}
+
+.property-cover-frame {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  background-color: rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .property-cover-frame {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.property-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.property-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-color);
+  opacity: 0.4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.placeholder-home-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.purpose-corner-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  background-color: var(--text-color);
+  color: var(--bg-color);
+}
+
+.premium-corner-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  background-color: #ffd71a;
+  color: #1a222d;
+}
+
+.property-card-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.property-price-headline {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-color);
+}
+
+.property-title-line {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.property-address-subline {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+.property-desc-snippet {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-color);
+  opacity: 0.72;
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pagination-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.page-numbers-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-nav-btn,
+.page-number-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: none;
+  background-color: var(--bg-color);
+  box-shadow: var(--neomorphic-flat);
+  color: var(--text-color);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.page-number-btn {
+  min-width: 36px;
+  padding: 0 10px;
+}
+
+.page-number-btn.is-current-page {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .listings-page-shell {
+    padding: 20px 16px;
+  }
 }

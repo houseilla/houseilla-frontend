@@ -10,11 +10,28 @@ import type {
   WarehouseDetail,
   AdvertisementImage
 } from '../models/advertisement';
+import type { PropertySearchFilters } from '@/models/propertySearch';
+import type { PaginatedResponse } from '@/models/pagination';
 
 export const advertisementService = {
   async getAdvertisementsByAdvertiser(advertiserId: number): Promise<Advertisement[]> {
     const response = await apiClient.get<Advertisement[]>(
       API_ENDPOINTS.ADVERTISEMENTS_BY_ADVERTISER(advertiserId)
+    );
+    return response.data;
+  },
+  
+  async searchAdvertisements(filters: PropertySearchFilters): Promise<PaginatedResponse<Advertisement>> {
+    const response = await apiClient.get<PaginatedResponse<Advertisement>>(
+      API_ENDPOINTS.BASE_ADVERTISEMENTS,
+      { params: filters }
+    );
+    return response.data;
+  },
+
+  async getAdvertisementById(advertisementId: number): Promise<Advertisement> {
+    const response = await apiClient.get<Advertisement>(
+      `${API_ENDPOINTS.BASE_ADVERTISEMENTS}/${advertisementId}`
     );
     return response.data;
   },
