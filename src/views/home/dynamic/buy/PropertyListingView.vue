@@ -7,9 +7,21 @@ import {
     AdvertisementPropertyType,
     AdvertisementPurpose
 } from '../../../../models/advertisementEnums';
+import {
+    usePropertySelection,
+    MAX_COMPARE_ITEMS
+} from '../../../../composables/usePropertySelection';
 
 const route = useRoute();
 const router = useRouter();
+
+const {
+    selectedIds,
+    selectedCount,
+    isSelected,
+    toggleSelectListing,
+    clearSelectedListings
+} = usePropertySelection();
 
 const PAGE_SIZE = 12;
 
@@ -24,9 +36,10 @@ const totalPages = ref(0);
 const totalElements = ref(0);
 
 // --- Parse URL Query Filters ---
-const selectedPurpose = computed<number | null>(() => {
-    const raw = route.query.purpose;
-    return raw !== undefined && raw !== '' ? Number(raw) : null;
+const selectedPurposes = computed<number[]>(() => {
+    const raw = String(route.query.purposes ?? route.query.purpose ?? '').trim();
+    if (!raw) return [];
+    return raw.split(',').map(Number).filter(n => !Number.isNaN(n));
 });
 
 const selectedTypes = computed<number[]>(() => {
@@ -82,7 +95,6 @@ const buildImageSrc = (img: AdvertisementImage): string => {
     return `data:${img.type || 'image/jpeg'};base64,${raw}`;
 };
 
-// Visible page numbers (1-based for UI)
 const visiblePageNumbers = computed<number[]>(() => {
     const total = totalPages.value;
     if (total <= 1) return [];
@@ -105,6 +117,7 @@ const loadListings = async () => {
     try {
         const pageData = await advertisementService.searchAdvertisements({
             purpose: route.query.purpose ? String(route.query.purpose) : undefined,
+            ...(route.query.purposes ? { purposes: String(route.query.purposes) } : {}),
             types: route.query.types ? String(route.query.types) : undefined,
             budget: route.query.budget ? String(route.query.budget) : undefined,
             pincode: route.query.pincode ? String(route.query.pincode) : undefined,
@@ -142,6 +155,24 @@ const loadListings = async () => {
     }
 };
 
+const goToComparePage = () => {
+    if (selectedCount.value < 2) return;
+    const idsParam = selectedIds.value.slice(0, MAX_COMPARE_ITEMS).join(',');
+    router.push({
+        path: '/compare',
+        query: { ids: idsParam }
+    });
+};
+
+const goToEnquiryPage = () => {
+    if (selectedCount.value < 1) return;
+    const idsParam = selectedIds.value.join(',');
+    router.push({
+        path: '/enquiry',
+        query: { ids: idsParam }
+    });
+};
+
 const goToPage = (zeroBasedPage: number) => {
     if (zeroBasedPage < 0 || zeroBasedPage >= totalPages.value || zeroBasedPage === currentPage.value) {
         return;
@@ -172,7 +203,7 @@ watch(() => route.query, loadListings);
     <div class="listings-page-shell">
         <div class="listings-inner-container">
 
-            <!-- Top Header Bar (Uses shared universal-back-arrow-btn from main.css) -->
+            <!-- Top Header Bar -->
             <div class="universal-view-header-row">
                 <div>
                     <h1 class="universal-view-main-title">
@@ -182,7 +213,7 @@ watch(() => route.query, loadListings);
                         <span v-if="!isLoading && totalPages > 0">
                             Page {{ currentPage + 1 }} of {{ totalPages }} ·
                         </span>
-                        Showing active listings matching your search criteria
+                        Click the top-right circle on tiles to select, compare, or enquire
                     </p>
                 </div>
 
@@ -198,10 +229,10 @@ watch(() => route.query, loadListings);
 
             <!-- Active Filter Summary Pills -->
             <div class="active-filters-strip">
-                <span v-if="selectedPurpose !== null" class="filter-chip-pill">
-                    {{ formatPurposeLabel(selectedPurpose) }}
+                <span v-for="p in selectedPurposes" :key="`purpose-${p}`" class="filter-chip-pill">
+                    {{ formatPurposeLabel(p) }}
                 </span>
-                <span v-for="t in selectedTypes" :key="t" class="filter-chip-pill">
+                <span v-for="t in selectedTypes" :key="`type-${t}`" class="filter-chip-pill">
                     {{ formatPropertyType(t) }}
                 </span>
                 <span v-if="exactPincode" class="filter-chip-pill">
@@ -229,12 +260,12 @@ watch(() => route.query, loadListings);
                     <span class="btn-label-text">Back to Search Filters</span>
                 </button>
             </div>
-
-            <!-- 6-Column Compact Neomorphic Property Card Grid -->
+            <!-- 4-Column Neomorphic Property Card Grid -->
             <template v-else>
                 <div class="tiles-four-col-grid">
                     <div v-for="item in listings" :key="item.id"
                         class="shared-grid-tile is-solid-item-tile property-result-card"
+                        :class="{ 'is-selected-card': isSelected(item.id) }"
                         @click="openPropertyDetails(item.id)">
 
                         <!-- Cover Photo or Clean Placeholder -->
@@ -256,6 +287,29 @@ watch(() => route.query, loadListings);
                             <span v-if="item.isPremium === 1" class="premium-corner-badge">
                                 Premium
                             </span>
+
+                            <!-- Circular Top-Right Tile Select Button -->
+                            <button
+                                type="button"
+                                class="card-select-toggle-btn"
+                                :class="{ 'is-checked': isSelected(item.id) }"
+                                :title="isSelected(item.id) ? 'Deselect property' : 'Select property'"
+                                @click.stop="toggleSelectListing(item)"
+                            >
+                                <svg
+                                    v-if="isSelected(item.id)"
+                                    class="card-select-check-svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="3"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                <span v-else class="card-select-ring"></span>
+                            </button>
                         </div>
 
                         <!-- Card Body -->
@@ -301,8 +355,44 @@ watch(() => route.query, loadListings);
                     </button>
                 </div>
             </template>
+            <!-- Bottom-Right Capsule Pill: [ Compare | Enquiry ] -->
+            <div v-if="selectedCount > 0" class="floating-selection-pill-group animate-fade-in">
+                <button
+                    type="button"
+                    class="floating-clear-pill-btn"
+                    title="Clear selection"
+                    @click="clearSelectedListings"
+                >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+
+                <div class="floating-joined-pill-bar">
+                    <button
+                        type="button"
+                        class="floating-joined-half-btn is-compare-half"
+                        :disabled="selectedCount < 2"
+                        :title="selectedCount < 2 ? 'Select at least 2 properties to compare' : 'Compare selected properties'"
+                        @click="goToComparePage"
+                    >
+                        Compare ({{ Math.min(selectedCount, MAX_COMPARE_ITEMS) }})
+                    </button>
+
+                    <button
+                        type="button"
+                        class="floating-joined-half-btn is-enquiry-half"
+                        title="Send enquiry for selected properties"
+                        @click="goToEnquiryPage"
+                    >
+                        Enquiry ({{ selectedCount }})
+                    </button>
+                </div>
+            </div>
 
         </div>
     </div>
 </template>
+
 
