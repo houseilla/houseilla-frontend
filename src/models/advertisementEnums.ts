@@ -59,9 +59,9 @@ export enum AdvertisementPurpose {
 }
 
 export const AdvertisementPurposeLabels: Record<AdvertisementPurpose, string> = {
-  [AdvertisementPurpose.SALE]: 'For Sale',
-  [AdvertisementPurpose.RENT]: 'For Rent',
-  [AdvertisementPurpose.LEASE]: 'For Lease'
+  [AdvertisementPurpose.SALE]: 'Sale',
+  [AdvertisementPurpose.RENT]: 'Rent',
+  [AdvertisementPurpose.LEASE]: 'Lease'
 };
 
 // 5. Advertiser Contractual

@@ -232,7 +232,7 @@ watch(() => route.query, loadListings);
 
             <!-- 6-Column Compact Neomorphic Property Card Grid -->
             <template v-else>
-                <div class="tiles-six-col-grid">
+                <div class="tiles-four-col-grid">
                     <div v-for="item in listings" :key="item.id"
                         class="shared-grid-tile is-solid-item-tile property-result-card"
                         @click="openPropertyDetails(item.id)">

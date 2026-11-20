@@ -301,7 +301,6 @@ body {
   opacity: 0.4;
   user-select: none;
 }
-
 /* ==========================================================================
    5. Flat Binary Selection Components (Radio Buttons & Checkboxes)
    ========================================================================== */
@@ -652,7 +651,6 @@ div.flat-textarea-container.is-invalid-textarea {
   opacity: 0.28 !important;
   filter: saturate(0.4) contrast(0.95);
 }
-
 /* ==========================================================================
    8. Shared 3-Column Action & Media Tile Grid System (Step 3 & Step 7)
    ========================================================================== */
@@ -811,9 +809,8 @@ div.flat-textarea-container.is-invalid-textarea {
   color: #ffffff;
   border-color: #ea580c;
 }
-
 /* ==========================================================================
-   9. Shared 6-Column Property Listing Cards & Pagination System
+   9. Shared 4-Column Property Listing Cards & Pagination System
    ========================================================================== */
 .listings-page-shell {
   width: 100%;
@@ -867,34 +864,28 @@ div.flat-textarea-container.is-invalid-textarea {
   color: #ff3333;
 }
 
-/* Compact 6-Column Grid (2 rows x 6 = 12 cards per page) */
-.tiles-six-col-grid {
+/* 4-Column Grid (3 rows x 4 = 12 cards per page) */
+.tiles-four-col-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
   width: 100%;
 }
 
-@media (max-width: 1280px) {
-  .tiles-six-col-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 900px) {
-  .tiles-six-col-grid {
+@media (max-width: 1120px) {
+  .tiles-four-col-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 640px) {
-  .tiles-six-col-grid {
+@media (max-width: 820px) {
+  .tiles-four-col-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 400px) {
-  .tiles-six-col-grid {
+@media (max-width: 520px) {
+  .tiles-four-col-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -907,7 +898,7 @@ div.flat-textarea-container.is-invalid-textarea {
 .property-cover-frame {
   position: relative;
   width: 100%;
-  height: 100px;
+  height: 165px;
   background-color: rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
@@ -929,25 +920,25 @@ div.flat-textarea-container.is-invalid-textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   color: var(--text-color);
   opacity: 0.4;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .placeholder-home-svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .purpose-corner-badge {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  padding: 2px 7px;
-  border-radius: 5px;
-  font-size: 9.5px;
+  top: 10px;
+  left: 10px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 10.5px;
   font-weight: 800;
   background-color: var(--text-color);
   color: var(--bg-color);
@@ -955,31 +946,31 @@ div.flat-textarea-container.is-invalid-textarea {
 
 .premium-corner-badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 2px 7px;
-  border-radius: 5px;
-  font-size: 9.5px;
+  top: 10px;
+  right: 10px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 10.5px;
   font-weight: 800;
   background-color: #ffd71a;
   color: #1a222d;
 }
 
 .property-card-body {
-  padding: 10px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .property-price-headline {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--accent-color);
 }
 
 .property-title-line {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-color);
   white-space: nowrap;
@@ -988,18 +979,18 @@ div.flat-textarea-container.is-invalid-textarea {
 }
 
 .property-address-subline {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-color);
   opacity: 0.6;
 }
 
 .property-desc-snippet {
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-color);
   opacity: 0.72;
-  margin-top: 2px;
+  margin-top: 3px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
